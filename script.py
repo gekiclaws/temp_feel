@@ -11,11 +11,12 @@ df = pd.read_csv("temp feel - sorted.csv")
 df = df.fillna(0)
 
 # Display the first few rows of the dataset
+print("First few rows of the dataset:")
 print(df.head())
 
 # Step 1: Preprocessing
-# Encode categorical variables
-categorical_cols = ['feel_sun']  # Add others if necessary
+# Identify all categorical columns and encode them
+categorical_cols = ['feel_sun']  # Include all necessary categorical columns
 label_encoders = {}
 
 for col in categorical_cols:
@@ -27,10 +28,14 @@ for col in categorical_cols:
 target_encoder = LabelEncoder()
 df['feels'] = target_encoder.fit_transform(df['feels'])
 
-# Step 2: Select only the top 4 features
-top_4_features = ['temp', 'hr', 'feel_sun', 'Clo']  # Based on feature importance
-X = df[top_4_features]
+# Step 2: Use all features for training (except the target variable)
+features = df.columns.difference(['feels'])  # Automatically select all columns except 'feels'
+X = df[features]
 y = df['feels']
+
+# Debugging: Display the features being used
+print("\nFeatures used for training:")
+print(features)
 
 # Step 3: Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -43,6 +48,7 @@ rf_model.fit(X_train, y_train)
 y_pred = rf_model.predict(X_test)
 
 # Step 6: Evaluate the model
+print("\n=== Model Evaluation ===")
 print("Accuracy:", accuracy_score(y_test, y_pred))
 print("\nClassification Report:\n", classification_report(y_test, y_pred))
 print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
@@ -52,6 +58,7 @@ feature_importances = pd.DataFrame({
     'Feature': X.columns,
     'Importance': rf_model.feature_importances_
 }).sort_values(by='Importance', ascending=False)
+
 print("\nFeature Importances:\n", feature_importances)
 
 # Decode Predictions (Optional)
