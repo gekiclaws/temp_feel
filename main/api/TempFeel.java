@@ -1,10 +1,8 @@
 package main.api;
 
 import java.util.HashMap;
-import java.util.Set;
-import java.lang.IllegalStateException;
 
-/*
+/**
  * A static utility class that allows clients to retrieve predictions from the trained classifier.
  * 
  * Example use:
@@ -20,98 +18,176 @@ public final class TempFeel {
 
     public static final class TempFeelConfig {
         private enum Fields {upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels}
-        private HashMap<Fields, String> h = new HashMap<>();
+        
+        // All fields have default values
+        private final double upperClo;
+        private final double lowerClo;
+        private final int temp;
+        private final boolean sun;
+        private final boolean headwind;
+        private final Intensity snow;
+        private final Intensity rain;
+        private final boolean fatigued;
+        private final int hr;
+        private final Feeling feels;
 
-        private double upperClo = -1; // required field
-        private double lowerClo = -1; // required field
-        private byte temp = -128; // required field
-        private boolean sun = false; // default: false
-        private boolean headwind = false; // default: false
-        private Intensity snow = Intensity.NONE; // default: none
-        private Intensity rain = Intensity.NONE; // default: none
-        private boolean fatigued = false; // default: false
-        private byte hr = 80; // default: 80
-        private Feeling feels;
+        // Default values for all fields
+        private static final double DEFAULT_UPPER_CLO = 0.08;
+        private static final double DEFAULT_LOWER_CLO = 0.15;
+        private static final int DEFAULT_TEMP = 20;
+        private static final boolean DEFAULT_SUN = false;
+        private static final boolean DEFAULT_HEADWIND = false;
+        private static final Intensity DEFAULT_SNOW = Intensity.NONE;
+        private static final Intensity DEFAULT_RAIN = Intensity.NONE;
+        private static final boolean DEFAULT_FATIGUED = false;
+        private static final int DEFAULT_HR = 80;
+        private static final Feeling DEFAULT_FEELS = Feeling.COOL;
 
-        private TempFeelConfig() {
-            h.put(Fields.sun, Boolean.valueOf(this.sun).toString());
-            h.put(Fields.headwind, Boolean.valueOf(this.headwind).toString());
-            h.put(Fields.snow, this.snow.toString());
-            h.put(Fields.rain, this.rain.toString());
-            h.put(Fields.fatigued, Boolean.valueOf(this.fatigued).toString());
-            h.put(Fields.hr, Byte.valueOf(this.hr).toString());
-        };
-
+        // Private constructor with all parameters
+        private TempFeelConfig(double upperClo, double lowerClo, int temp, 
+                              boolean sun, boolean headwind, Intensity snow, 
+                              Intensity rain, boolean fatigued, int hr, Feeling feels) {
+            this.upperClo = upperClo;
+            this.lowerClo = lowerClo;
+            this.temp = temp;
+            this.sun = sun;
+            this.headwind = headwind;
+            this.snow = snow;
+            this.rain = rain;
+            this.fatigued = fatigued;
+            this.hr = hr;
+            this.feels = feels;
+        }
+        
+        // Factory method for initial config with defaults
+        static TempFeelConfig create() {
+            return new TempFeelConfig(
+                DEFAULT_UPPER_CLO, DEFAULT_LOWER_CLO, DEFAULT_TEMP,
+                DEFAULT_SUN, DEFAULT_HEADWIND, DEFAULT_SNOW,
+                DEFAULT_RAIN, DEFAULT_FATIGUED, DEFAULT_HR, DEFAULT_FEELS);
+        }
+        
+        // Each method returns a new instance with the updated value
         public TempFeelConfig upperClo(double val) {
-            this.upperClo = val; h.put(Fields.upperClo, Double.valueOf(this.upperClo).toString()); return this; }
+            return new TempFeelConfig(val, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels);
+        }
 
-        public TempFeelConfig lowerClo(double val) { 
-            this.lowerClo = val; h.put(Fields.lowerClo, Double.valueOf(this.lowerClo).toString()); return this; }
+        public TempFeelConfig lowerClo(double val) {
+            return new TempFeelConfig(upperClo, val, temp, sun, headwind, snow, rain, fatigued, hr, feels);
+        }
 
-        /**
-         * Updates the config temperature.
-         * @param temp temperature in Celsius
-         */
-        public TempFeelConfig temp(byte temp) { 
-            this.temp = temp; h.put(Fields.temp, Byte.valueOf(this.temp).toString()); return this; }
+        public TempFeelConfig temp(int val) {
+            return new TempFeelConfig(upperClo, lowerClo, val, sun, headwind, snow, rain, fatigued, hr, feels);
+        }
 
         public TempFeelConfig sun() {
-            this.sun = true; h.put(Fields.sun, Boolean.valueOf(this.sun).toString()); return this; }
+            return new TempFeelConfig(upperClo, lowerClo, temp, true, headwind, snow, rain, fatigued, hr, feels);
+        }
 
         public TempFeelConfig noSun() {
-            this.sun = false; h.put(Fields.sun, Boolean.valueOf(this.sun).toString()); return this; }
+            return new TempFeelConfig(upperClo, lowerClo, temp, false, headwind, snow, rain, fatigued, hr, feels);
+        }
 
-        public TempFeelConfig headwind(boolean b) { 
-            this.headwind = b; h.put(Fields.headwind, Boolean.valueOf(this.headwind).toString()); return this; }
+        public TempFeelConfig headwind(boolean b) {
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, b, snow, rain, fatigued, hr, feels);
+        }
 
-        public TempFeelConfig snow(Intensity i) { 
-            this.snow = i; h.put(Fields.snow, this.snow.toString()); return this; }
+        public TempFeelConfig snow(Intensity i) {
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, i, rain, fatigued, hr, feels);
+        }
 
-        public TempFeelConfig rain(Intensity i) { 
-            this.rain = i; h.put(Fields.rain, this.rain.toString()); return this; }
+        public TempFeelConfig rain(Intensity i) {
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, i, fatigued, hr, feels);
+        }
 
-        public TempFeelConfig fatigued(boolean b) { 
-            this.fatigued = b; h.put(Fields.fatigued, Boolean.valueOf(this.fatigued).toString()); return this; }
+        public TempFeelConfig fatigued(boolean b) {
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, b, hr, feels);
+        }
 
-        public TempFeelConfig hr(byte hr) { 
-            this.hr = hr; h.put(Fields.hr, Byte.valueOf(this.hr).toString()); return this; }
+        public TempFeelConfig hr(int val) {
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, val, feels);
+        }
 
         public TempFeelConfig feeling(Feeling f) {
-            this.feels = f; h.put(Fields.feels, this.feels.toString()); return this; }
+            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, f);
+        }
+        
+        // Generate HashMap for serialization, excluding specified field (if any)
+        public HashMap<Fields, String> toMap(Fields fieldToExclude) {
+            HashMap<Fields, String> map = new HashMap<>();
+            
+            if (fieldToExclude != Fields.upperClo) map.put(Fields.upperClo, Double.valueOf(upperClo).toString());
+            if (fieldToExclude != Fields.lowerClo) map.put(Fields.lowerClo, Double.valueOf(lowerClo).toString());
+            if (fieldToExclude != Fields.temp) map.put(Fields.temp, Integer.valueOf(temp).toString());
+            if (fieldToExclude != Fields.sun) map.put(Fields.sun, Boolean.valueOf(sun).toString());
+            if (fieldToExclude != Fields.headwind) map.put(Fields.headwind, Boolean.valueOf(headwind).toString());
+            if (fieldToExclude != Fields.snow) map.put(Fields.snow, snow.toString());
+            if (fieldToExclude != Fields.rain) map.put(Fields.rain, rain.toString());
+            if (fieldToExclude != Fields.fatigued) map.put(Fields.fatigued, Boolean.valueOf(fatigued).toString());
+            if (fieldToExclude != Fields.hr) map.put(Fields.hr, Integer.valueOf(hr).toString());
+            if (fieldToExclude != Fields.feels) map.put(Fields.feels, feels.toString());
+            
+            return map;
+        }
+        
+        // Convenience method to get map with all fields
+        public HashMap<Fields, String> toMap() {
+            return toMap(null);
+        }
     }
 
     // Static utility class: prevent instantiation
     private TempFeel() {}
 
-    public static TempFeelConfig newConfig(){
-        return new TempFeelConfig();
+    public static TempFeelConfig newConfig() {
+        return TempFeelConfig.create();
     }
 
-    // Prediction retrievers. All other fields in TempFeelConfig must be filled for these to work.
-    private static boolean allOtherFieldsExist(TempFeelConfig c, TempFeelConfig.Fields field) {
-        Set<TempFeelConfig.Fields> keys = c.h.keySet();
-        keys.remove(field);
-        return c.h.size() == 9;
-    }
-
-    public static Feeling getFeeling(TempFeelConfig c){
-        if (!allOtherFieldsExist(c, TempFeelConfig.Fields.feels)) throw new IllegalStateException("All other fields must be initialized");
+    public static Feeling getFeeling(TempFeelConfig c) {
+        // Exclude the 'feels' field since that's what we're predicting
+        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.feels);
+        
+        // In a real implementation:
+        // String json = convertToJson(data);
+        // String result = callPythonScript(json);
+        // return parseFeeling(result);
+        
         return Feeling.COLD; // mock, should make a call to the python script
     }
 
-    public static byte getHR(TempFeelConfig c) {
-        if (!allOtherFieldsExist(c, TempFeelConfig.Fields.hr)) throw new IllegalStateException("All other fields must be initialized");
+    public static int getHR(TempFeelConfig c) {
+        // Exclude the 'hr' field since that's what we're predicting
+        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.hr);
+        
+        // In a real implementation, similar to getFeeling
+        
         return 80; // mock
     }
 
     public static double getUpperClo(TempFeelConfig c) {
-        if (!allOtherFieldsExist(c, TempFeelConfig.Fields.upperClo)) throw new IllegalStateException("All other fields must be initialized");
+        // Exclude the 'upperClo' field since that's what we're predicting
+        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.upperClo);
+        
+        // In a real implementation, similar to getFeeling
+        
         return 1.00; // mock, should make a call to the python script
     }
-
-    public static void main(String[] args) {
-        TempFeelConfig c = TempFeel.newConfig();
-        c.upperClo(1).lowerClo(1).temp((byte)1);
-        TempFeel.getFeeling(c);
+    
+    // Helper methods for when Python integration is implemented
+    /*
+    private static String convertToJson(HashMap<TempFeelConfig.Fields, String> data) {
+        // Implementation to convert the map to JSON
+        return "{}";
     }
+    
+    private static String callPythonScript(String jsonInput) {
+        // Implementation to call Python script
+        return "{}";
+    }
+    
+    private static Feeling parseFeeling(String jsonResult) {
+        // Implementation to parse feeling from result
+        return Feeling.COLD;
+    }
+    */
 }
