@@ -1,5 +1,5 @@
 package clients;
 
-public class Client {
+public class CLI {
     
 }

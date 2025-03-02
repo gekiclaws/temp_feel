@@ -26,11 +26,11 @@ public final class TempFeel {
         private byte hr = 80; // default: 80
         private Feeling feels;
 
-        protected void data() {  }
-
         private TempFeelConfig() {};
 
         // Provide copy method?
+
+        private void toJSON() {};
 
         public TempFeelConfig upperClo(double val) { this.upperClo = val; return this; }
 
@@ -64,7 +64,6 @@ public final class TempFeel {
     }
 
     // Prediction retrievers
-
     public static Feeling getFeeling(TempFeelConfig c){
         return Feeling.COLD; // mock, should make a call to the python script
     }
