@@ -18,7 +18,7 @@ public final class TempFeel {
     public enum Intensity { NONE, LIGHT, MEDIUM, HEAVY };
     public enum Feeling { COLD, COOL, WARM, HOT };
 
-    public final class TempFeelConfig {
+    public static final class TempFeelConfig {
         private enum Fields {upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels}
         private HashMap<Fields, String> h = new HashMap<>();
 
@@ -84,8 +84,7 @@ public final class TempFeel {
     private TempFeel() {}
 
     public static TempFeelConfig newConfig(){
-        TempFeel x = new TempFeel();
-        return x.new TempFeelConfig();
+        return new TempFeelConfig();
     }
 
     // Prediction retrievers. All other fields in TempFeelConfig must be filled for these to work.
@@ -113,6 +112,6 @@ public final class TempFeel {
     public static void main(String[] args) {
         TempFeelConfig c = TempFeel.newConfig();
         c.upperClo(1).lowerClo(1).temp((byte)1);
-        getFeeling(c);
+        TempFeel.getFeeling(c);
     }
 }
