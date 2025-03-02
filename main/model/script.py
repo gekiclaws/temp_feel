@@ -16,7 +16,7 @@ print(df.head())
 
 # Step 1: Preprocessing
 # Identify all categorical columns and encode them
-categorical_cols = ['feel_sun']  # Include all necessary categorical columns
+categorical_cols = ['feel_sun', 'precip', 'snow', 'headwind', 'fatigued']  # Include all necessary categorical columns
 label_encoders = {}
 
 for col in categorical_cols:
@@ -62,5 +62,5 @@ feature_importances = pd.DataFrame({
 print("\nFeature Importances:\n", feature_importances)
 
 # Decode Predictions (Optional)
-decoded_predictions = target_encoder.inverse_transform(y_pred)
-print("\nDecoded Predictions:\n", decoded_predictions)
+# decoded_predictions = target_encoder.inverse_transform(y_pred)
+# print("\nDecoded Predictions:\n", decoded_predictions)
