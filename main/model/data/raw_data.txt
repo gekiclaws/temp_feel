@@ -1,0 +1,4 @@
+cot L 9 100 sun warm
+cot L 8 head 100 sun cool
+cot f L 7 80 no sun cool
+cot f L 6 80 no sun cool
