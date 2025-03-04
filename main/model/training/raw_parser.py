@@ -142,8 +142,8 @@ def write_csv(records, output_file):
     return df
 
 def main():
-    input_file = "raw_data.txt"
-    output_file = "parsed_data.csv"
+    input_file = "data/raw_data.txt"
+    output_file = "data/parsed_data.csv"
     
     # Check if input file exists
     if not os.path.exists(input_file):
