@@ -6,8 +6,7 @@ import java.util.HashMap;
  * A static utility class that allows clients to retrieve predictions from the trained classifier.
  * 
  * Example use:
- * TempFeelConfig c = TempFeel.newConfig();
- * c.upperClo(0.3).lowerClo(0.12).sun().headwind(false).fatigued(true);
+ * TempFeelConfig c = TempFeel.newConfig().upperClo(0.3).lowerClo(0.12).sun().headwind(false).fatigued(true);
  * Feeling f = TempFeel.getFeeling(c);
  * System.out.println("It will feel: "+f);
  * 
