@@ -1,6 +1,16 @@
 package api;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 /**
  * A static utility class that allows clients to retrieve predictions from the trained classifier.
@@ -12,6 +22,12 @@ import java.util.HashMap;
  * 
  */
 public final class TempFeel {
+    // API configuration
+    private static final String API_BASE_URL = "http://localhost:5000";
+    private static final String PREDICT_ENDPOINT = "/predict";
+    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
     public enum Intensity { NONE, LIGHT, MEDIUM, HEAVY };
     public enum Feeling { COLD, COOL, WARM, HOT };
 
@@ -111,27 +127,35 @@ public final class TempFeel {
             return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, f);
         }
         
-        // Generate HashMap for serialization, excluding specified field (if any)
-        public HashMap<Fields, String> toMap(Fields fieldToExclude) {
-            HashMap<Fields, String> map = new HashMap<>();
+        // Generate Map for API request, excluding specified field (if any)
+        public Map<String, Object> toApiMap(Fields fieldToExclude) {
+            Map<String, Object> map = new HashMap<>();
             
-            if (fieldToExclude != Fields.upperClo) map.put(Fields.upperClo, Double.valueOf(upperClo).toString());
-            if (fieldToExclude != Fields.lowerClo) map.put(Fields.lowerClo, Double.valueOf(lowerClo).toString());
-            if (fieldToExclude != Fields.temp) map.put(Fields.temp, Integer.valueOf(temp).toString());
-            if (fieldToExclude != Fields.sun) map.put(Fields.sun, Boolean.valueOf(sun).toString());
-            if (fieldToExclude != Fields.headwind) map.put(Fields.headwind, Boolean.valueOf(headwind).toString());
-            if (fieldToExclude != Fields.snow) map.put(Fields.snow, snow.toString());
-            if (fieldToExclude != Fields.rain) map.put(Fields.rain, rain.toString());
-            if (fieldToExclude != Fields.fatigued) map.put(Fields.fatigued, Boolean.valueOf(fatigued).toString());
-            if (fieldToExclude != Fields.hr) map.put(Fields.hr, Integer.valueOf(hr).toString());
-            if (fieldToExclude != Fields.feels) map.put(Fields.feels, feels.toString());
+            // Convert to proper data types for API
+            if (fieldToExclude != Fields.upperClo) map.put("upperClo", upperClo);
+            if (fieldToExclude != Fields.lowerClo) map.put("lowerClo", lowerClo);
+            if (fieldToExclude != Fields.temp) map.put("temp", temp);
+            if (fieldToExclude != Fields.sun) map.put("sun", sun ? 1 : 0);  // Convert boolean to int
+            if (fieldToExclude != Fields.headwind) map.put("headwind", headwind ? 1 : 0);
+            
+            // Convert enums to integers for API
+            if (fieldToExclude != Fields.snow) map.put("snow", snow.ordinal());
+            if (fieldToExclude != Fields.rain) map.put("rain", rain.ordinal());
+            
+            if (fieldToExclude != Fields.fatigued) map.put("fatigued", fatigued ? 1 : 0);
+            if (fieldToExclude != Fields.hr) map.put("hr", hr);
+            if (fieldToExclude != Fields.feels) map.put("feels", feels.ordinal());
+
+            if (map.keySet().size() != 9) {
+                throw new IllegalStateException("Missing fields in TempFeelConfig");
+            }
             
             return map;
         }
         
         // Convenience method to get map with all fields
-        public HashMap<Fields, String> toMap() {
-            return toMap(null);
+        public Map<String, Object> toApiMap() {
+            return toApiMap(null);
         }
     }
 
@@ -143,50 +167,107 @@ public final class TempFeel {
     }
 
     public static Feeling getFeeling(TempFeelConfig c) {
-        // Exclude the 'feels' field since that's what we're predicting
-        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.feels);
-        
-        // In a real implementation:
-        // String json = convertToJson(data);
-        // String result = callPythonScript(json);
-        // return parseFeeling(result);
-        
-        return Feeling.COLD; // mock, should make a call to the python script
+        try {
+            // Exclude the 'feels' field since that's what we're predicting
+            Map<String, Object> data = c.toApiMap(TempFeelConfig.Fields.feels);
+            
+            // Call Python API and get result
+            Map<String, Object> result = callPredictionApi(data);
+            
+            // Parse the result
+            if (result.containsKey("prediction_labels") && result.get("prediction_labels") instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<String> labels = (List<String>) result.get("prediction_labels");
+                if (!labels.isEmpty()) {
+                    String label = labels.get(0);
+                    return Feeling.valueOf(label.toUpperCase());
+                }
+            }
+            
+            // Fallback to using numeric prediction
+            if (result.containsKey("predictions") && result.get("predictions") instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Integer> predictions = (List<Integer>) result.get("predictions");
+                if (!predictions.isEmpty()) {
+                    int prediction = predictions.get(0);
+                    return intToFeeling(prediction);
+                }
+            }
+            
+            throw new RuntimeException("Unable to parse prediction result");
+        } catch (Exception e) {
+            System.err.println("Error getting feeling prediction: " + e.getMessage());
+            e.printStackTrace();
+            return Feeling.COOL; // Default as fallback
+        }
     }
 
     public static int getHR(TempFeelConfig c) {
-        // Exclude the 'hr' field since that's what we're predicting
-        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.hr);
-        
-        // In a real implementation, similar to getFeeling
-        
+        // Since HR prediction isn't yet implemented in the Python API, return a mock value
+        // In a real implementation, this would be similar to getFeeling but for HR
         return 80; // mock
     }
 
     public static double getUpperClo(TempFeelConfig c) {
-        // Exclude the 'upperClo' field since that's what we're predicting
-        HashMap<TempFeelConfig.Fields, String> data = c.toMap(TempFeelConfig.Fields.upperClo);
+        // Since upperClo prediction isn't yet implemented in the Python API, return a mock value
+        // In a real implementation, this would be similar to getFeeling but for upperClo
+        return 1.00; // mock
+    }
+    
+    private static Map<String, Object> callPredictionApi(Map<String, Object> data) throws IOException, InterruptedException {
+        // Create the request body
+        ObjectNode requestBody = JSON_MAPPER.createObjectNode();
+        ArrayNode instances = requestBody.putArray("instances");
+        ObjectNode instance = instances.addObject();
         
-        // In a real implementation, similar to getFeeling
+        // Add all data fields to the instance
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            
+            if (value instanceof Integer) {
+                instance.put(key, (Integer) value);
+            } else if (value instanceof Double) {
+                instance.put(key, (Double) value);
+            } else if (value instanceof Boolean) {
+                instance.put(key, (Boolean) value);
+            } else {
+                instance.put(key, String.valueOf(value));
+            }
+        }
         
-        return 1.00; // mock, should make a call to the python script
+        // Convert to JSON string
+        String requestJson = JSON_MAPPER.writeValueAsString(requestBody);
+        
+        // Build HTTP request
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(API_BASE_URL + PREDICT_ENDPOINT))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .build();
+        
+        // Send request and get response
+        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+        
+        // Check response status
+        if (response.statusCode() != 200) {
+            throw new IOException("API request failed with status code: " + response.statusCode() + 
+                                 ", body: " + response.body());
+        }
+        
+        // Parse response
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = JSON_MAPPER.readValue(response.body(), Map.class);
+        return result;
     }
     
-    // Helper methods for when Python integration is implemented
-    /*
-    private static String convertToJson(HashMap<TempFeelConfig.Fields, String> data) {
-        // Implementation to convert the map to JSON
-        return "{}";
+    private static Feeling intToFeeling(int feelingCode) {
+        switch (feelingCode) {
+            case 0: return Feeling.COLD;
+            case 1: return Feeling.COOL;
+            case 2: return Feeling.WARM;
+            case 3: return Feeling.HOT;
+            default: return Feeling.COOL; // Default
+        }
     }
-    
-    private static String callPythonScript(String jsonInput) {
-        // Implementation to call Python script
-        return "{}";
-    }
-    
-    private static Feeling parseFeeling(String jsonResult) {
-        // Implementation to parse feeling from result
-        return Feeling.COLD;
-    }
-    */
 }
