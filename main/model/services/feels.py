@@ -63,12 +63,5 @@ def predict():
         "probabilities": probabilities
     })
 
-@app.route("/model/info", methods=["GET"])
-def model_info():
-    if metadata is None:
-        return jsonify({"error": "No model metadata available"}), 503
-    
-    return jsonify(metadata)
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
