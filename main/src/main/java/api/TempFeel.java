@@ -1,18 +1,7 @@
 package api;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.List;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 
 /**
  * A static utility class that allows clients to retrieve predictions from the trained classifier.
@@ -45,156 +34,175 @@ public final class TempFeel {
     };
 
     public static final class TempFeelConfig {
-        private enum Fields {upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels}
+        // Required fields that need validation use wrapper types
+        private final Double upperClo;  // Using wrapper types allows null
+        private final Double lowerClo;
+        private final Integer temp;
+        private final Feeling feels;  // Could be null if not predicting
         
-        // All fields for the configuration
-        private final double upperClo;
-        private final double lowerClo;
-        private final int temp;
+        // Optional fields use primitives with defaults
         private final boolean sun;
         private final boolean headwind;
         private final Intensity snow;
         private final Intensity rain;
         private final boolean fatigued;
         private final int hr;
-        private final Feeling feels;
-
-        // Flags for tracking explicitly set fields
-        private final boolean upperCloSet;
-        private final boolean lowerCloSet;
-        private final boolean tempSet;
-        private final boolean feelsSet;
-
-        // Default values for all fields
-        private static final double DEFAULT_UPPER_CLO = 0.08;
-        private static final double DEFAULT_LOWER_CLO = 0.15;
-        private static final int DEFAULT_TEMP = 20;
-        private static final boolean DEFAULT_SUN = false;
-        private static final boolean DEFAULT_HEADWIND = false;
-        private static final Intensity DEFAULT_SNOW = Intensity.NONE;
-        private static final Intensity DEFAULT_RAIN = Intensity.NONE;
-        private static final boolean DEFAULT_FATIGUED = false;
-        private static final int DEFAULT_HR = 80;
-        private static final Feeling DEFAULT_FEELS = Feeling.COOL;
-
-        // Private constructor with all parameters
-        private TempFeelConfig(double upperClo, double lowerClo, int temp, 
-                      boolean sun, boolean headwind, Intensity snow, 
-                      Intensity rain, boolean fatigued, int hr, Feeling feels,
-                      boolean upperCloSet, boolean lowerCloSet, boolean tempSet,
-                      boolean feelsSet) {
-            this.upperClo = upperClo;
-            this.lowerClo = lowerClo;
-            this.temp = temp;
-            this.sun = sun;
-            this.headwind = headwind;
-            this.snow = snow;
-            this.rain = rain;
-            this.fatigued = fatigued;
-            this.hr = hr;
-            this.feels = feels;
-            
-            this.upperCloSet = upperCloSet;
-            this.lowerCloSet = lowerCloSet;
-            this.tempSet = tempSet;
-            this.feelsSet = feelsSet;
+    
+        private TempFeelConfig(Builder builder) {
+            // Copy all values directly - no defaults applied during construction
+            this.upperClo = builder.upperClo;
+            this.lowerClo = builder.lowerClo;
+            this.temp = builder.temp;
+            this.sun = builder.sun;
+            this.headwind = builder.headwind;
+            this.snow = builder.snow;
+            this.rain = builder.rain;
+            this.fatigued = builder.fatigued;
+            this.hr = builder.hr;
+            this.feels = builder.feels;
         }
-
-        // Factory method for initial config with defaults
-        static TempFeelConfig create() {
-            return new TempFeelConfig(
-                DEFAULT_UPPER_CLO, DEFAULT_LOWER_CLO, DEFAULT_TEMP,
-                DEFAULT_SUN, DEFAULT_HEADWIND, DEFAULT_SNOW,
-                DEFAULT_RAIN, DEFAULT_FATIGUED, DEFAULT_HR, DEFAULT_FEELS,
-                false, false, false, false);  // No fields set initially
+    
+        public Builder toBuilder() {
+            return new Builder(this);
+        }
+    
+        // Domain-specific validation methods
+        public boolean canPredictFeeling() {
+            return upperClo != null && lowerClo != null && temp != null;
+        }
+    
+        // Getters with appropriate default handling
+        public double getUpperClo() { 
+            return upperClo != null ? upperClo : 0.08; 
         }
         
-        // Each method returns a new instance with the updated value
-        public TempFeelConfig upperClo(double val) {
-            return new TempFeelConfig(val, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels,
-                                    true, lowerCloSet, tempSet, feelsSet);
+        public double getLowerClo() { 
+            return lowerClo != null ? lowerClo : 0.15; 
         }
         
-        public TempFeelConfig lowerClo(double val) {
-            return new TempFeelConfig(upperClo, val, temp, sun, headwind, snow, rain, fatigued, hr, feels,
-                                    upperCloSet, true, tempSet, feelsSet);
+        public int getTemp() { 
+            return temp != null ? temp : 20; 
         }
         
-        public TempFeelConfig temp(int val) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels,
-                                    upperCloSet, lowerCloSet, true, feelsSet);
-        }
-
-        public TempFeelConfig sun() {
-            return new TempFeelConfig(upperClo, lowerClo, temp, true, headwind, snow, rain, fatigued, hr, feels,
-                                    upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig noSun() {
-            return new TempFeelConfig(upperClo, lowerClo, temp, false, headwind, snow, rain, fatigued, hr, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig headwind(boolean b) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, b, snow, rain, fatigued, hr, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig snow(Intensity i) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, i, rain, fatigued, hr, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig rain(Intensity i) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, i, fatigued, hr, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig fatigued(boolean b) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, b, hr, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig hr(int val) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, val, feels,
-            upperCloSet, lowerCloSet, tempSet, feelsSet);
-        }
-
-        public TempFeelConfig feeling(Feeling f) {
-            return new TempFeelConfig(upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, f,
-            upperCloSet, lowerCloSet, tempSet, true);
-        }
-        
-        // Generate complete Map for API request
+        public boolean isSun() { return sun; }
+        public boolean isHeadwind() { return headwind; }
+        public Intensity getSnow() { return snow; }
+        public Intensity getRain() { return rain; }
+        public boolean isFatigued() { return fatigued; }
+        public int getHr() { return hr; }
+        public Feeling getFeels() { return feels; }
+    
+        // Map generation provides defaults for null values
         public Map<String, Object> toMap() {
             Map<String, Object> map = new HashMap<>();
             
-            // Convert to proper data types for API
-            map.put("upperClo", upperClo);
-            map.put("lowerClo", lowerClo);
-            map.put("temp", temp);
-            map.put("sun", sun ? 1 : 0);  // Convert boolean to int
+            map.put("upperClo", getUpperClo());
+            map.put("lowerClo", getLowerClo());
+            map.put("temp", getTemp());
+            map.put("sun", sun ? 1 : 0);
             map.put("headwind", headwind ? 1 : 0);
             map.put("snow", snow.ordinal());
             map.put("rain", rain.ordinal());
             map.put("fatigued", fatigued ? 1 : 0);
             map.put("hr", hr);
-            map.put("feels", feels.ordinal());
+            if (feels != null) {
+                map.put("feels", feels.ordinal());
+            }
             
             return map;
         }
-
-        private void validate(Fields fieldToExclude) throws IllegalStateException {
-            List<String> missingFields = new ArrayList<>();
+    
+        public static class Builder {
+            // Required fields start as null
+            private Double upperClo = null;
+            private Double lowerClo = null;
+            private Integer temp = null;
             
-            if (fieldToExclude != Fields.upperClo && !upperCloSet) missingFields.add("upperClo");
-            if (fieldToExclude != Fields.lowerClo && !lowerCloSet) missingFields.add("lowerClo");
-            if (fieldToExclude != Fields.temp && !tempSet) missingFields.add("temp");
-            if (fieldToExclude != Fields.feels && !feelsSet) missingFields.add("feels");
+            // Optional fields have defaults
+            private boolean sun = false;
+            private boolean headwind = false;
+            private Intensity snow = Intensity.NONE;
+            private Intensity rain = Intensity.NONE;
+            private boolean fatigued = false;
+            private int hr = 80;
+            private Feeling feels = null;
+    
+            public Builder() {}
             
-            if (!missingFields.isEmpty()) {
-                throw new IllegalStateException("Missing required parameters: " + 
-                                            String.join(", ", missingFields));
+            private Builder(TempFeelConfig config) {
+                this.upperClo = config.upperClo;
+                this.lowerClo = config.lowerClo;
+                this.temp = config.temp;
+                this.sun = config.sun;
+                this.headwind = config.headwind;
+                this.snow = config.snow;
+                this.rain = config.rain;
+                this.fatigued = config.fatigued;
+                this.hr = config.hr;
+                this.feels = config.feels;
+            }
+            
+            public Builder upperClo(double val) {
+                this.upperClo = val;
+                return this;
+            }
+            
+            public Builder lowerClo(double val) {
+                this.lowerClo = val;
+                return this;
+            }
+            
+            public Builder clo(double val) {
+                return upperClo(val).lowerClo(val);
+            }
+            
+            public Builder temp(int val) {
+                this.temp = val;
+                return this;
+            }
+            
+            public Builder sun() {
+                this.sun = true;
+                return this;
+            }
+            
+            public Builder noSun() {
+                this.sun = false;
+                return this;
+            }
+            
+            public Builder headwind(boolean val) {
+                this.headwind = val;
+                return this;
+            }
+            
+            public Builder snow(Intensity val) {
+                this.snow = val;
+                return this;
+            }
+            
+            public Builder rain(Intensity val) {
+                this.rain = val;
+                return this;
+            }
+            
+            public Builder fatigued(boolean val) {
+                this.fatigued = val;
+                return this;
+            }
+            
+            public Builder hr(int val) {
+                this.hr = val;
+                return this;
+            }
+            
+            public Builder feeling(Feeling val) {
+                this.feels = val;
+                return this;
+            }
+            
+            public TempFeelConfig build() {
+                return new TempFeelConfig(this);
             }
         }
     }
@@ -202,16 +210,17 @@ public final class TempFeel {
     // Static utility class: prevent instantiation
     private TempFeel() {}
 
-    public static TempFeelConfig newConfig() {
-        return TempFeelConfig.create();
+    public static TempFeelConfig.Builder builder() {
+        return new TempFeelConfig.Builder();
     }
 
     public static Feeling getFeeling(TempFeelConfig c) {
-        try {
-            // Validate that all required fields are set
-            c.validate(TempFeelConfig.Fields.feels);
+        if (!c.canPredictFeeling()) {
+            throw new IllegalArgumentException("Config is missing required fields for predicting feeling");
+        }
 
-            // Exclude the 'feels' field since that's what we're predicting
+        try {
+            // Convert config to map
             Map<String, Object> data = c.toMap();
             
             // Call the API using the client
@@ -227,14 +236,14 @@ public final class TempFeel {
 
     public static int getHR(TempFeelConfig c) {
         // Validate that all required fields are set
-        c.validate(TempFeelConfig.Fields.hr);
+
 
         return 80; // mock
     }
 
     public static double getUpperClo(TempFeelConfig c) {
         // Validate that all required fields are set
-        c.validate(TempFeelConfig.Fields.upperClo);
+
 
         return 1.00; // mock
     }
