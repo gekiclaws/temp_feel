@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Simple configuration
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../classifiers/feels/")
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../models/feels/")
 os.makedirs(MODEL_DIR, exist_ok=True)
 VERSION = datetime.now().strftime("%Y%m%d_%H%M%S")
 MODEL_PATH = os.path.join(MODEL_DIR, f"model_{VERSION}.pkl")
@@ -18,7 +18,7 @@ LATEST_PATH = os.path.join(MODEL_DIR, "latest_version.txt")
 def train_model():
     """Train and save the random forest model"""
     # Load data
-    data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../training_data/data/cleaned_data.csv")
+    data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/cleaned_data.csv")
     df = pd.read_csv(data_path)
     print(f"Loaded {df.shape[0]} samples")
     

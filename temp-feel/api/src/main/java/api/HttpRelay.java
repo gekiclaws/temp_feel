@@ -1,4 +1,4 @@
-// ApiClient.java
+
 package api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,7 +13,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 
-public class ApiClient {
+public class HttpRelay {
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -22,7 +22,7 @@ public class ApiClient {
     
     private final String baseUrl;
     
-    public ApiClient(String baseUrl) {
+    public HttpRelay(String baseUrl) {
         this.baseUrl = baseUrl;
     }
     

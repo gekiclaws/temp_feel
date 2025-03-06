@@ -6,7 +6,7 @@ import json
 
 app = Flask(__name__)
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../classifiers/feels/")
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../models/feels/")
 META_PATH = os.path.join(MODEL_DIR, "model_meta.json")
 LATEST_PATH = os.path.join(MODEL_DIR, "latest_version.txt")
 

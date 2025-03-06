@@ -1,3 +1,4 @@
+
 package api;
 
 import java.util.HashMap;
@@ -15,7 +16,7 @@ import java.util.Map;
 public final class TempFeel {
     // API configuration
     private static final String API_BASE_URL = "http://localhost:8080";
-    private static final ApiClient API_CLIENT = new ApiClient(API_BASE_URL);
+    private static final HttpRelay API_CLIENT = new HttpRelay(API_BASE_URL);
 
     public enum Intensity { NONE, LIGHT, MEDIUM, HEAVY };
     public enum Feeling {
