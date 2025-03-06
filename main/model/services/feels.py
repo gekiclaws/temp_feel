@@ -56,10 +56,10 @@ def predict():
     # Map numeric classes to labels
     class_mapping = metadata['class_mapping']
     prediction_labels = [class_mapping[str(p)] for p in predictions]
+    prediction_label = prediction_labels[0]
     
     return jsonify({
-        "predictions": predictions,
-        "prediction_labels": prediction_labels,
+        "prediction_label": prediction_label,
         "probabilities": probabilities
     })
 

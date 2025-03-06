@@ -26,12 +26,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 public final class TempFeel {
     // API configuration
     private static final String API_BASE_URL = "http://localhost:8080";
-    private static final String PREDICT_ENDPOINT = "/predict";
-    private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static final ApiClient API_CLIENT = new ApiClient(API_BASE_URL);
 
     public enum Intensity { NONE, LIGHT, MEDIUM, HEAVY };
-    public enum Feeling { COLD, COOL, WARM, HOT };
+    public enum Feeling {
+        COLD, COOL, WARM, HOT;
+
+        // From string to feeling
+        public static Feeling fromString(String s) {
+            switch (s) {
+                case "COLD": return COLD;
+                case "COOL": return COOL;
+                case "WARM": return WARM;
+                case "HOT": return HOT;
+                default: return COOL;  // Default
+            }
+        }
+    };
 
     public static final class TempFeelConfig {
         private enum Fields {upperClo, lowerClo, temp, sun, headwind, snow, rain, fatigued, hr, feels}
@@ -154,35 +165,23 @@ public final class TempFeel {
             upperCloSet, lowerCloSet, tempSet, true);
         }
         
-        // Generate Map for API request, excluding specified field (if any)
-        public Map<String, Object> toApiMap(Fields fieldToExclude) {
+        // Generate complete Map for API request
+        public Map<String, Object> toMap() {
             Map<String, Object> map = new HashMap<>();
             
             // Convert to proper data types for API
-            if (fieldToExclude != Fields.upperClo) map.put("upperClo", upperClo);
-            if (fieldToExclude != Fields.lowerClo) map.put("lowerClo", lowerClo);
-            if (fieldToExclude != Fields.temp) map.put("temp", temp);
-            if (fieldToExclude != Fields.sun) map.put("sun", sun ? 1 : 0);  // Convert boolean to int
-            if (fieldToExclude != Fields.headwind) map.put("headwind", headwind ? 1 : 0);
-            
-            // Convert enums to integers for API
-            if (fieldToExclude != Fields.snow) map.put("snow", snow.ordinal());
-            if (fieldToExclude != Fields.rain) map.put("rain", rain.ordinal());
-            
-            if (fieldToExclude != Fields.fatigued) map.put("fatigued", fatigued ? 1 : 0);
-            if (fieldToExclude != Fields.hr) map.put("hr", hr);
-            if (fieldToExclude != Fields.feels) map.put("feels", feels.ordinal());
-
-            if (map.keySet().size() != 9) {
-                throw new IllegalStateException("Missing fields in TempFeelConfig");
-            }
+            map.put("upperClo", upperClo);
+            map.put("lowerClo", lowerClo);
+            map.put("temp", temp);
+            map.put("sun", sun ? 1 : 0);  // Convert boolean to int
+            map.put("headwind", headwind ? 1 : 0);
+            map.put("snow", snow.ordinal());
+            map.put("rain", rain.ordinal());
+            map.put("fatigued", fatigued ? 1 : 0);
+            map.put("hr", hr);
+            map.put("feels", feels.ordinal());
             
             return map;
-        }
-        
-        // Convenience method to get map with all fields
-        public Map<String, Object> toApiMap() {
-            return toApiMap(null);
         }
 
         private void validate(Fields fieldToExclude) throws IllegalStateException {
@@ -213,36 +212,16 @@ public final class TempFeel {
             c.validate(TempFeelConfig.Fields.feels);
 
             // Exclude the 'feels' field since that's what we're predicting
-            Map<String, Object> data = c.toApiMap(TempFeelConfig.Fields.feels);
+            Map<String, Object> data = c.toMap();
             
-            // Call Python API and get result
-            Map<String, Object> result = callPredictionApi(data);
+            // Call the API using the client
+            Map<String, Object> result = API_CLIENT.predict("/predict", data);
             
-            // Parse the result
-            if (result.containsKey("prediction_labels") && result.get("prediction_labels") instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<String> labels = (List<String>) result.get("prediction_labels");
-                if (!labels.isEmpty()) {
-                    String label = labels.get(0);
-                    return Feeling.valueOf(label.toUpperCase());
-                }
-            }
-            
-            // Fallback to using numeric prediction
-            if (result.containsKey("predictions") && result.get("predictions") instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<Integer> predictions = (List<Integer>) result.get("predictions");
-                if (!predictions.isEmpty()) {
-                    int prediction = predictions.get(0);
-                    return intToFeeling(prediction);
-                }
-            }
-            
-            throw new RuntimeException("Unable to parse prediction result");
+            // Parse result
+            String predictionLabel = result.get("prediction_label").toString();
+            return Feeling.fromString(predictionLabel);
         } catch (Exception e) {
-            System.err.println("Error getting feeling prediction: " + e.getMessage());
-            e.printStackTrace();
-            return Feeling.COOL; // Default as fallback
+            throw new RuntimeException("Error getting feeling prediction: " + e.getMessage(), e);
         }
     }
 
@@ -258,68 +237,5 @@ public final class TempFeel {
         c.validate(TempFeelConfig.Fields.upperClo);
 
         return 1.00; // mock
-    }
-    
-    private static Map<String, Object> callPredictionApi(Map<String, Object> data) throws IOException, InterruptedException {
-        // Create the request body
-        ObjectNode requestBody = JSON_MAPPER.createObjectNode();
-        ArrayNode instances = requestBody.putArray("instances");
-        ObjectNode instance = instances.addObject();
-        
-        // Add all data fields to the instance
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            
-            if (value instanceof Integer) {
-                instance.put(key, (Integer) value);
-            } else if (value instanceof Double) {
-                instance.put(key, (Double) value);
-            } else if (value instanceof Boolean) {
-                instance.put(key, (Boolean) value);
-            } else {
-                instance.put(key, String.valueOf(value));
-            }
-        }
-        
-        // Convert to JSON string
-        String requestJson = JSON_MAPPER.writeValueAsString(requestBody);
-        System.out.println("Request URL: " + API_BASE_URL + PREDICT_ENDPOINT);
-        System.out.println("Request Body: " + requestJson);
-        
-        // Build HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_BASE_URL + PREDICT_ENDPOINT))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                .build();
-        
-        // Send request and get response
-        HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        System.out.println("Response Status: " + response.statusCode());
-        System.out.println("Response Headers: " + response.headers());
-        System.out.println("Response Body: " + response.body());
-        
-        // Check response status
-        if (response.statusCode() != 200) {
-            throw new IOException("API request failed with status code: " + response.statusCode() + 
-                                 ", body: " + response.body());
-        }
-        
-        // Parse response
-        @SuppressWarnings("unchecked")
-        Map<String, Object> result = JSON_MAPPER.readValue(response.body(), Map.class);
-        return result;
-    }
-    
-    private static Feeling intToFeeling(int feelingCode) {
-        switch (feelingCode) {
-            case 0: return Feeling.COLD;
-            case 1: return Feeling.COOL;
-            case 2: return Feeling.WARM;
-            case 3: return Feeling.HOT;
-            default: return Feeling.COOL; // Default
-        }
     }
 }
