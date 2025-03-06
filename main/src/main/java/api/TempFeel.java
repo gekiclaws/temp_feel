@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -24,7 +25,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
  */
 public final class TempFeel {
     // API configuration
-    private static final String API_BASE_URL = "http://localhost:5000";
+    private static final String API_BASE_URL = "http://localhost:8080";
     private static final String PREDICT_ENDPOINT = "/predict";
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
@@ -283,6 +284,8 @@ public final class TempFeel {
         
         // Convert to JSON string
         String requestJson = JSON_MAPPER.writeValueAsString(requestBody);
+        System.out.println("Request URL: " + API_BASE_URL + PREDICT_ENDPOINT);
+        System.out.println("Request Body: " + requestJson);
         
         // Build HTTP request
         HttpRequest request = HttpRequest.newBuilder()
@@ -293,6 +296,10 @@ public final class TempFeel {
         
         // Send request and get response
         HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+        
+        System.out.println("Response Status: " + response.statusCode());
+        System.out.println("Response Headers: " + response.headers());
+        System.out.println("Response Body: " + response.body());
         
         // Check response status
         if (response.statusCode() != 200) {
