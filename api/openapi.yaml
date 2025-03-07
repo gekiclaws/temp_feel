@@ -1,0 +1,132 @@
+openapi: 3.0.0
+info:
+  title: Temp Feel API
+  description: API for predicting comfort feeling and recommending clothing based on input features
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /predict-feels:
+    post:
+      summary: Predict comfort feelings based on input features
+      description: Returns a prediction of comfort feelings and probability scores for each possible class
+      operationId: predictFeels
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - instances
+              properties:
+                instances:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties:
+                      type: number
+                  description: Array of feature instances to predict
+                  example:
+                    - temp: 25
+                      sun: 0
+                      headwind: 0
+                      snow: 0
+                      rain: 0
+                      fatigued: 0
+                      hr: 75
+                      feels: 0
+      responses:
+        '200':
+          description: Successful prediction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction:
+                    type: string
+                    description: The predicted feeling label
+                    example: "1"
+                  probabilities:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: number
+                    description: Probability scores for each possible class
+                    example:
+                      - 0.1
+                      - 0.7
+                      - 0.2
+                      - 0.0
+        '503':
+          description: Service unavailable - model not loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "No feels model loaded"
+
+  /predict-clothing:
+    post:
+      summary: Predict clothing recommendations
+      description: Returns clothing recommendations based on input features
+      operationId: predictClothing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - instances
+              properties:
+                instances:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties:
+                      type: number
+                  description: Array of feature instances to predict
+                  example:
+                    - temp: 25
+                      sun: 0
+                      headwind: 0
+                      snow: 0
+                      rain: 0
+                      fatigued: 0
+                      hr: 75
+                      feels: 0
+      responses:
+        '200':
+          description: Successful prediction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  predictions:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    description: Dictionary mapping clothing categories to recommendations
+                    example:
+                      lwr_clo: 0.5
+                      upr_clo: 0.2
+        '503':
+          description: Service unavailable - model not loaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "No clothing model loaded" 
