@@ -1,4 +1,5 @@
-api/TempFeel$TempFeelConfig$Fields.class
+api/TempFeel$TempFeelConfig$ConfigBuilder.class
+api/HttpRelay.class
 api/TempFeel$TempFeelConfig.class
 api/TempFeel$Feeling.class
 api/TempFeel$Intensity.class
