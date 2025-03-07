@@ -1,6 +1,6 @@
 # Temp Feel
 
-A tool that predicts thermal comfort levels and recommends clothing based on environmental conditions and physiological data.
+A predictive system that correlates clothing choices with physiological data and weather conditions to optimize outdoor comfort.
 
 ## Prerequisites
 
