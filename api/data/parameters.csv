@@ -1,0 +1,11 @@
+Parameter Name,Description,Data Type,Encoding Details,Examples/Allowed Values
+Clo_upr,Upper clothing insulation,double,-,"0.5, 1.0, 1.5"
+Clo_lwr,Lower clothing insulation,double,-,"0.2, 0.4, 0.6"
+temp,Feels like temperature,int,-,"20, 25, 30"
+sun?,Exposure to direct sunlight,boolean,-,"true, false"
+headwind?,Presence of headwind,boolean,-,"true, false"
+snow?,Snow intensity level,enum,ordinal encoding (0-3),"NONE, LIGHT, MEDIUM, HEAVY"
+rain?,Rain intensity level,enum,ordinal encoding (0-3),"NONE, LIGHT, MEDIUM, HEAVY"
+fatigued?,Fatigue status,boolean,-,"true, false"
+hr,Heart rate,int,-,"60, 75, 90"
+feels,Thermal sensation,enum,ordinal encoding (0-3),"COLD, COOL, WARM, HOT"
