@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { predictComfortService } from './api-service';
 
 const ComfortPredictionForm = () => {
   // Add a ref to store the last submitted form data
@@ -129,7 +130,7 @@ const ComfortPredictionForm = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Prepare API call with complete data
@@ -144,16 +145,8 @@ const ComfortPredictionForm = () => {
       console.log('Form submitted with changes:', apiData);
       
       // Call API
-      // This would be replaced with your actual API call
-      // const result = await predictComfortService(apiData);
-      // setPredictionResult(result);
-      
-      // Mock prediction result for demonstration
-      setPredictionResult({
-        comfort_level: formData.predictionMode === 'comfort' ? 'Comfortable' : null,
-        recommended_clothing: formData.predictionMode === 'clothing' ? ['t_poly', 'p_thin'] : null,
-        temperature_feeling: 'Normal',
-      });
+      const result = await predictComfortService(apiData);
+      setPredictionResult(result); 
       
       // Store the current data as last submitted
       lastSubmittedData.current = {...apiData};
@@ -439,9 +432,9 @@ const ComfortPredictionForm = () => {
         <div className="prediction-results">
           <h2>Prediction Results</h2>
           <div className="results-content">
-            {formData.predictionMode === 'comfort' && predictionResult.comfort_level && (
+            {formData.predictionMode === 'comfort' && predictionResult.prediction_label && (
               <div className="result-item">
-                <strong>Comfort Level:</strong> {predictionResult.comfort_level}
+                <strong>Comfort Level:</strong> {predictionResult.prediction_label}
               </div>
             )}
             {formData.predictionMode === 'clothing' && predictionResult.recommended_clothing && (
