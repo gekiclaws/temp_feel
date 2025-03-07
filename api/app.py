@@ -69,7 +69,7 @@ def predict_feels():
     prediction_labels = [class_mapping[str(p)] for p in predictions]
     prediction_label = prediction_labels[0]
 
-    print(probabilities)
+    print(prediction_label, probabilities)
     
     return jsonify({
         "prediction": prediction_label,

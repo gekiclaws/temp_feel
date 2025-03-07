@@ -69,8 +69,16 @@ def train_classifier(target_name, feature_cols=None, param_grid=None, test_size=
     print(f"Model accuracy: {accuracy:.4f}")
     
     # Get unique class values and create mapping
+    # Map numeric values to descriptive labels based on dataset values
+    feels_labels = {
+        0: 'cold',
+        1: 'cool',
+        2: 'warm', 
+        3: 'hot'
+    }
+    # Get unique classes from dataset and map to descriptive labels
     classes = sorted(y.unique())
-    class_mapping = {i: str(val) for i, val in enumerate(classes)}
+    class_mapping = {str(val): feels_labels[val] for val in classes}
     
     # Get paths for this target
     paths = get_model_paths(target_name)

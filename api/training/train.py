@@ -4,16 +4,11 @@ def train_feels_model():
     """Train the model for predicting 'feels' value"""
     print("Training 'feels' prediction model...")
     
-    # Define class mapping specific to 'feels'
-    class_mapping = {0: 'cold', 1: 'cool', 2: 'warm', 3: 'hot'}
-    
     # Train model
     model, metadata = train_classifier('feels')
     
-    # Update metadata with the specific class mapping
-    metadata['class_mapping'] = class_mapping
-    
     print(f"Feels model training complete with accuracy: {metadata['accuracy']:.4f}")
+    print(f"Class mapping: {metadata['class_mapping']}")
     return model, metadata
 
 def train_hr_model():
