@@ -1,4 +1,3 @@
-
 package api;
 
 import java.util.HashMap;
@@ -214,10 +213,10 @@ public final class TempFeel {
             Map<String, Object> data = c.toMap();
             
             // Call the API using the client
-            Map<String, Object> result = API_CLIENT.predict("/predict", data);
+            Map<String, Object> result = API_CLIENT.predict("/predict-feels", data);
             
             // Parse result
-            String predictionLabel = result.get("prediction_label").toString().toUpperCase();
+            String predictionLabel = result.get("prediction").toString().toUpperCase();
             return Feeling.fromString(predictionLabel);
         } catch (Exception e) {
             throw new RuntimeException("Error getting feeling prediction: " + e.getMessage(), e);

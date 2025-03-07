@@ -8,35 +8,41 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models/feels/")
-META_PATH = os.path.join(MODEL_DIR, "model_meta.json")
-LATEST_PATH = os.path.join(MODEL_DIR, "latest_version.txt")
+def get_model_paths(model_name):
+    """Get paths for a specific model"""
+    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"models/{model_name}/")
+    meta_path = os.path.join(model_dir, "model_meta.json")
+    latest_path = os.path.join(model_dir, "latest_version.txt")
+    return model_dir, meta_path, latest_path
 
-def load_model():
-    """Load the latest model and metadata"""
+def load_model(model_name):
+    """Load the latest model and metadata for given model name"""
     try:
-        with open(LATEST_PATH, 'r') as f:
+        model_dir, meta_path, latest_path = get_model_paths(model_name)
+        
+        with open(latest_path, 'r') as f:
             version = f.read().strip()
         
-        model_path = os.path.join(MODEL_DIR, f"model_{version}.pkl")
+        model_path = os.path.join(model_dir, f"model_{version}.pkl")
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
         
-        with open(META_PATH, 'r') as f:
+        with open(meta_path, 'r') as f:
             metadata = json.load(f)
         
         return model, metadata
     except Exception as e:
-        print(f"Error loading model: {e}")
+        print(f"Error loading {model_name} model: {e}")
         return None, None
 
-model, metadata = load_model()
+# Load models
+feels_model, feels_metadata = load_model('feels')
 
-@app.route("/predict", methods=["POST"])
-def predict():
-    if model is None:
-        print("No model loaded")
-        return jsonify({"error": "No model loaded"}), 503
+@app.route("/predict-feels", methods=["POST"])
+def predict_feels():
+    if feels_model is None:
+        print("No feels model loaded")
+        return jsonify({"error": "No feels model loaded"}), 503
     
     data = request.json
     print(data)
@@ -46,7 +52,7 @@ def predict():
     df = pd.DataFrame(instances)
     
     # Ensure correct feature order
-    feature_names = metadata['feature_names']
+    feature_names = feels_metadata['feature_names']
     for feature in feature_names:
         if feature not in df.columns:
             df[feature] = 0
@@ -54,18 +60,18 @@ def predict():
     df = df[feature_names]
     
     # Make prediction
-    predictions = model.predict(df).tolist()
-    probabilities = model.predict_proba(df).tolist()
+    predictions = feels_model.predict(df).tolist()
+    probabilities = feels_model.predict_proba(df).tolist()
     
     # Map numeric classes to labels
-    class_mapping = metadata['class_mapping']
+    class_mapping = feels_metadata['class_mapping']
     prediction_labels = [class_mapping[str(p)] for p in predictions]
     prediction_label = prediction_labels[0]
 
     print(probabilities)
     
     return jsonify({
-        "prediction_label": prediction_label,
+        "prediction": prediction_label,
         "probabilities": probabilities
     })
 

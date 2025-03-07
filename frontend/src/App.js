@@ -147,7 +147,7 @@ const ComfortPredictionForm = () => {
         const result = await predictComfortService(apiData);
         
         // If in comfort prediction mode, update the "feels" dropdown based on API response
-        if (formData.predictionMode === 'comfort' && result.prediction_label) {
+        if (formData.predictionMode === 'comfort' && result.prediction) {
           // Map the prediction label to the corresponding feels value
           const feelsMapping = {
             'cold': 'COLD',
@@ -159,7 +159,7 @@ const ComfortPredictionForm = () => {
           // Update the feels value based on the prediction
           setFormData(prev => ({
             ...prev,
-            feels: feelsMapping[result.prediction_label.toLowerCase()] || prev.feels
+            feels: feelsMapping[result.prediction.toLowerCase()] || prev.feels
           }));
         }
         

@@ -20,7 +20,7 @@ export const predictComfortService = async (formData) => {
         feels: mapFeelsToNumber(formData.feels)
       };
   
-      const response = await fetch(`${API_BASE_URL}/predict`, {
+      const response = await fetch(`${API_BASE_URL}/predict-feels`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
