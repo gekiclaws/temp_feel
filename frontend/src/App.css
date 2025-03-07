@@ -19,6 +19,12 @@ h2 {
   padding-bottom: 8px;
 }
 
+h3 {
+  color: #34495e;
+  margin: 15px 0 10px;
+  font-size: 1.1rem;
+}
+
 .prediction-mode-selector {
   display: flex;
   justify-content: center;
@@ -48,6 +54,46 @@ h2 {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.clothing-section {
+  flex-basis: 100%;
+}
+
+.clothing-type {
+  margin-bottom: 25px;
+}
+
+.clothing-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.clothing-item {
+  background-color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.clothing-item label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.clothing-item input {
+  margin-right: 8px;
+}
+
+.calculated-value {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #e9f7ef;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
 .form-group {
@@ -134,6 +180,21 @@ select:disabled {
   background-color: #c0392b;
 }
 
+.debug-output {
+  margin-top: 30px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  font-family: monospace;
+}
+
+.debug-output pre {
+  background-color: #eee;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
 @media (max-width: 768px) {
   .form-sections {
     flex-direction: column;
@@ -142,4 +203,44 @@ select:disabled {
   .form-section {
     width: 100%;
   }
+  
+  .clothing-options {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+.prediction-results {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #e8f4fc;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.prediction-results h2 {
+  color: #2980b9;
+  margin-top: 0;
+}
+
+.results-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.result-item {
+  padding: 10px;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.result-item ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.submit-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
 }
