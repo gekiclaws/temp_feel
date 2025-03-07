@@ -7,8 +7,6 @@ const ComfortPredictionForm = () => {
   const lastSubmittedData = useRef(null);
   // Add state to track if form has changed since last submission
   const [formChanged, setFormChanged] = useState(false);
-  // Add state for prediction results
-  const [predictionResult, setPredictionResult] = useState(null);
 
   const [formData, setFormData] = useState({
     temp: 20,
@@ -140,19 +138,40 @@ const ComfortPredictionForm = () => {
       lower_clothing: Object.keys(lowerClothing).filter(item => lowerClothing[item])
     };
     
-    // Only make API call if form has changed since last submission
+    // Only make API call if form has changed since last submission (but don't show this to user)
     if (formChanged || !lastSubmittedData.current) {
       console.log('Form submitted with changes:', apiData);
       
-      // Call API
-      const result = await predictComfortService(apiData);
-      setPredictionResult(result); 
-      
-      // Store the current data as last submitted
-      lastSubmittedData.current = {...apiData};
-      
-      // Reset the changed flag
-      setFormChanged(false);
+      try {
+        // Call API
+        const result = await predictComfortService(apiData);
+        
+        // If in comfort prediction mode, update the "feels" dropdown based on API response
+        if (formData.predictionMode === 'comfort' && result.prediction_label) {
+          // Map the prediction label to the corresponding feels value
+          const feelsMapping = {
+            'cold': 'COLD',
+            'cool': 'COOL',
+            'warm': 'WARM',
+            'hot': 'HOT'
+          };
+          
+          // Update the feels value based on the prediction
+          setFormData(prev => ({
+            ...prev,
+            feels: feelsMapping[result.prediction_label.toLowerCase()] || prev.feels
+          }));
+        }
+        
+        // Store the current data as last submitted
+        lastSubmittedData.current = {...apiData};
+        
+        // Reset the changed flag
+        setFormChanged(false);
+      } catch (error) {
+        console.error('Error predicting comfort:', error);
+        // Handle error (could add an error state here if needed)
+      }
     } else {
       console.log('No changes since last submission, skipping API call');
     }
@@ -192,8 +211,8 @@ const ComfortPredictionForm = () => {
     // Mark as changed after reset
     setFormChanged(true);
     
-    // Clear prediction results
-    setPredictionResult(null);
+    // Clear the last submitted data
+    lastSubmittedData.current = null;
   };
 
   const clothingLabels = {
@@ -400,6 +419,7 @@ const ComfortPredictionForm = () => {
                 value={formData.feels}
                 onChange={handleChange}
                 disabled={formData.predictionMode === 'comfort'}
+                className={formData.predictionMode === 'comfort' ? 'highlight-feels' : ''}
               >
                 <option value="COLD">Cold</option>
                 <option value="COOL">Cool</option>
@@ -411,66 +431,16 @@ const ComfortPredictionForm = () => {
         </div>
 
         <div className="form-buttons">
-          <button 
-            type="submit" 
-            className="submit-button"
-            disabled={!formChanged && lastSubmittedData.current}
-          >
+          <button type="submit" className="submit-button">
             {formData.predictionMode === 'comfort' 
               ? 'Predict Comfort' 
               : 'Recommend Clothing'}
-            {!formChanged && lastSubmittedData.current && ' (No Changes)'}
           </button>
           <button type="button" className="reset-button" onClick={handleReset}>
             Reset
           </button>
         </div>
       </form>
-      
-      {/* Display prediction results */}
-      {predictionResult && (
-        <div className="prediction-results">
-          <h2>Prediction Results</h2>
-          <div className="results-content">
-            {formData.predictionMode === 'comfort' && predictionResult.prediction_label && (
-              <div className="result-item">
-                <strong>Comfort Level:</strong> {predictionResult.prediction_label}
-              </div>
-            )}
-            {formData.predictionMode === 'clothing' && predictionResult.recommended_clothing && (
-              <div className="result-item">
-                <strong>Recommended Clothing:</strong>
-                <ul>
-                  {predictionResult.recommended_clothing.map(item => (
-                    <li key={item}>{clothingLabels[item]}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {predictionResult.temperature_feeling && (
-              <div className="result-item">
-                <strong>Temperature Feeling:</strong> {predictionResult.temperature_feeling}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      
-      {/* Debug output - can be removed in production */}
-      {formData.predictionMode === 'comfort' && (
-        <div className="debug-output">
-          <p>Calculated clothing values:</p>
-          <pre>
-            {JSON.stringify({
-              upper_clo: formData.clo_upr,
-              lower_clo: formData.clo_lwr,
-              upper_items: Object.keys(upperClothing).filter(item => upperClothing[item]),
-              lower_items: Object.keys(lowerClothing).filter(item => lowerClothing[item]),
-              form_changed: formChanged
-            }, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 };
