@@ -1,6 +1,5 @@
 main/target/*
 .class
-.pkl
 .txt
 .json
 .csv
