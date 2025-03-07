@@ -3,10 +3,12 @@ import pickle
 import pandas as pd
 import os
 import json
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../models/feels/")
+MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models/feels/")
 META_PATH = os.path.join(MODEL_DIR, "model_meta.json")
 LATEST_PATH = os.path.join(MODEL_DIR, "latest_version.txt")
 
@@ -33,9 +35,11 @@ model, metadata = load_model()
 @app.route("/predict", methods=["POST"])
 def predict():
     if model is None:
+        print("No model loaded")
         return jsonify({"error": "No model loaded"}), 503
     
     data = request.json
+    print(data)
     instances = data["instances"]
     
     # Convert to DataFrame
@@ -57,6 +61,8 @@ def predict():
     class_mapping = metadata['class_mapping']
     prediction_labels = [class_mapping[str(p)] for p in predictions]
     prediction_label = prediction_labels[0]
+
+    print(probabilities)
     
     return jsonify({
         "prediction_label": prediction_label,
