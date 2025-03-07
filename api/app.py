@@ -107,6 +107,7 @@ def predict_clothing():
     prediction_dict = {}
     for i, col in enumerate(target_cols):
         prediction_dict[col] = predictions[0][i]
+    print(prediction_dict)
     
     return jsonify({
         "predictions": prediction_dict
