@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import { predictComfortService } from './api-service';
+import { predictComfort, predictClothing } from './api-service';
 
 const ComfortPredictionForm = () => {
   // Add a ref to store the last submitted form data
   const lastSubmittedData = useRef(null);
   // Add state to track if form has changed since last submission
   const [formChanged, setFormChanged] = useState(false);
+  // Add state to store predicted clo values
+  const [predictedClo, setPredictedClo] = useState(null);
 
   const [formData, setFormData] = useState({
     temp: 20,
@@ -93,6 +95,11 @@ const ComfortPredictionForm = () => {
         [name]: type === 'checkbox' ? checked : value
       };
       
+      // Clear predicted clo values when switching modes
+      if (name === 'predictionMode') {
+        setPredictedClo(null);
+      }
+      
       // Mark form as changed
       if (lastSubmittedData.current) {
         const prevValue = prev[name];
@@ -143,24 +150,68 @@ const ComfortPredictionForm = () => {
       console.log('Form submitted with changes:', apiData);
       
       try {
-        // Call API
-        const result = await predictComfortService(apiData);
-        
-        // If in comfort prediction mode, update the "feels" dropdown based on API response
-        if (formData.predictionMode === 'comfort' && result.prediction_label) {
-          // Map the prediction label to the corresponding feels value
-          const feelsMapping = {
-            'cold': 'COLD',
-            'cool': 'COOL',
-            'warm': 'WARM',
-            'hot': 'HOT'
-          };
+        let result;
+        if (formData.predictionMode === 'comfort') {
+          // Call comfort prediction API
+          result = await predictComfort(apiData);
           
-          // Update the feels value based on the prediction
-          setFormData(prev => ({
-            ...prev,
-            feels: feelsMapping[result.prediction_label.toLowerCase()] || prev.feels
-          }));
+          if (result.prediction) {
+            // Map the prediction label to the corresponding feels value
+            const feelsMapping = {
+              'cold': 'COLD',
+              'cool': 'COOL',
+              'warm': 'WARM',
+              'hot': 'HOT'
+            };
+            
+            // Update the feels value based on the prediction
+            setFormData(prev => ({
+              ...prev,
+              feels: feelsMapping[result.prediction.toLowerCase()] || prev.feels
+            }));
+          }
+        } else {
+          // Call clothing prediction API
+          result = await predictClothing(apiData);
+          
+          if (result.predictions) {
+            // Store predicted clo values
+            setPredictedClo(result.predictions);
+            
+            // Get recommended clothing based on clo values
+            const recommendedUpper = Object.entries(clothingValues)
+              .filter(([key]) => key.startsWith('t_') || key.startsWith('j_'))
+              .reduce((closest, [item, value]) => {
+                return Math.abs(value - result.predictions.upr_clo) < Math.abs(closest.value - result.predictions.upr_clo)
+                  ? { item, value }
+                  : closest;
+              }, { item: '', value: Infinity });
+
+            const recommendedLower = Object.entries(clothingValues)
+              .filter(([key]) => !key.startsWith('t_') && !key.startsWith('j_'))
+              .reduce((closest, [item, value]) => {
+                return Math.abs(value - result.predictions.lwr_clo) < Math.abs(closest.value - result.predictions.lwr_clo)
+                  ? { item, value }
+                  : closest;
+              }, { item: '', value: Infinity });
+
+            // Update clothing selections
+            setUpperClothing(prev => {
+              const updated = {};
+              Object.keys(prev).forEach(key => {
+                updated[key] = key === recommendedUpper.item;
+              });
+              return updated;
+            });
+
+            setLowerClothing(prev => {
+              const updated = {};
+              Object.keys(prev).forEach(key => {
+                updated[key] = key === recommendedLower.item;
+              });
+              return updated;
+            });
+          }
         }
         
         // Store the current data as last submitted
@@ -207,6 +258,9 @@ const ComfortPredictionForm = () => {
       p_fleece: false,
       p_down: false
     });
+    
+    // Clear predicted clo values
+    setPredictedClo(null);
     
     // Mark as changed after reset
     setFormChanged(true);
@@ -429,6 +483,14 @@ const ComfortPredictionForm = () => {
             </div>
           </div>
         </div>
+
+        {formData.predictionMode === 'clothing' && predictedClo && (
+          <div className="predicted-clo-values">
+            <h3>Clothing Insulation you need</h3>
+            <div>Upper body: <strong>{predictedClo.upr_clo.toFixed(2)}</strong> clo</div>
+            <div>Lower body: <strong>{predictedClo.lwr_clo.toFixed(2)}</strong> clo</div>
+          </div>
+        )}
 
         <div className="form-buttons">
           <button type="submit" className="submit-button">

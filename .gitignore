@@ -1,9 +1,7 @@
 main/target/*
-.class
-.pkl
-.txt
-.json
-.csv
-.jsonl
-.jsonl.gz
-.jsonl.gz.part
+*.class
+*.txt
+*.json
+*.jsonl
+*.jsonl.gz
+*.jsonl.gz.part
