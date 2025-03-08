@@ -1,4 +1,4 @@
-# Temp Feel
+# Temp Feel API
 
 A predictive system that correlates clothing choices with physiological data and weather conditions to optimize outdoor comfort.
 
