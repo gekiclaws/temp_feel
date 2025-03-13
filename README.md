@@ -29,7 +29,7 @@ A predictive system that correlates clothing choices with physiological data and
 3. Review `data/parameters.csv` to understand the dataset parameters and their meanings
 
 4. Data preparation:
-   - Use the existing `data/cleaned_data.csv` for testing, or
+   - Rename the `data/cleaned_data_sample.csv` sample to `cleaned_data.csv` for testing, or
    - Replace it with your own data following the same schema
    - Ensure your data matches the format in `parameters.csv`
 

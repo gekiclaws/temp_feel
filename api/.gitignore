@@ -1,2 +1,5 @@
 *.pyc
 models/
+data/
+!data/cleaned_data_sample.csv
+!data/parameters.csv
