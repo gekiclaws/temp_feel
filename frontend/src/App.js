@@ -17,7 +17,7 @@ const ComfortPredictionForm = () => {
     snow: 'NONE',
     rain: 'NONE',
     fatigued: false,
-    hr: 75,
+    hr: 90,
     feels: 'COOL',
     predictionMode: 'comfort'
   });
@@ -236,7 +236,7 @@ const ComfortPredictionForm = () => {
       snow: 'NONE',
       rain: 'NONE',
       fatigued: false,
-      hr: 75,
+      hr: 90,
       feels: 'COOL',
       predictionMode: 'comfort'
     });
