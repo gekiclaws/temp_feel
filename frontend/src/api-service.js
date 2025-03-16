@@ -1,5 +1,5 @@
 // api-service.js
-const API_BASE_URL = 'http://localhost:8080/';
+const API_BASE_URL = 'http://localhost:8080';
 
 /**
  * Predicts comfort level based on clothing and environmental factors
@@ -20,7 +20,7 @@ export const predictComfort = async (formData) => {
         feels: mapFeelsToNumber(formData.feels)
       };
   
-      const response = await fetch(`${API_BASE_URL}/predict-feels`, {
+      const response = await fetch(`${API_BASE_URL}/predict/feels`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ export const predictClothing = async (formData) => {
         feels: mapFeelsToNumber(formData.feels)
       };
 
-      const response = await fetch(`${API_BASE_URL}/predict-clothing`, {
+      const response = await fetch(`${API_BASE_URL}/predict/clothing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
