@@ -1,0 +1,19 @@
+# Development and training files
+training/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Version control
+.git/
+.gitignore
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Documentation
+*.md
+openapi.yaml 

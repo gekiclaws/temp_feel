@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
-import pickle
-import pandas as pd
+from flask_cors import CORS
+import onnxruntime as ort
+import numpy as np
 import os
 import json
-from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
@@ -18,25 +18,22 @@ def get_model_paths(model_name):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_dir = os.path.join(base_dir, "models", model_name)
     meta_path = os.path.join(model_dir, "model_meta.json")
-    latest_path = os.path.join(model_dir, "latest_version.txt")
-    return model_dir, meta_path, latest_path
+    model_path = os.path.join(model_dir, "model.onnx")
+    return model_dir, meta_path, model_path
 
 def load_model(model_name):
-    """Load the latest model and metadata for given model name"""
+    """Load the ONNX model and metadata for given model name"""
     try:
-        model_dir, meta_path, latest_path = get_model_paths(model_name)
+        model_dir, meta_path, model_path = get_model_paths(model_name)
         
-        with open(latest_path, 'r') as f:
-            version = f.read().strip()
+        # Load ONNX model
+        session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
         
-        model_path = os.path.join(model_dir, f"model_{version}.pkl")
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
-        
+        # Load metadata
         with open(meta_path, 'r') as f:
             metadata = json.load(f)
         
-        return model, metadata
+        return session, metadata
     except Exception as e:
         print(f"Error loading {model_name} model: {e}")
         return None, None
@@ -44,6 +41,18 @@ def load_model(model_name):
 # Load models
 feels_model, feels_metadata = load_model('feels')
 clothing_model, clothing_metadata = load_model('clothing')
+
+def prepare_features(instances, feature_names):
+    """Convert instances to numpy array with correct feature order"""
+    # Initialize array with zeros
+    X = np.zeros((len(instances), len(feature_names)), dtype=np.float32)  # ONNX requires float32
+    
+    # Fill in values for features that exist
+    for i, instance in enumerate(instances):
+        for j, feature in enumerate(feature_names):
+            X[i, j] = float(instance.get(feature, 0))
+    
+    return X
 
 @app.route("/predict/feels", methods=["POST"])
 def predict_feels():
@@ -55,24 +64,25 @@ def predict_feels():
     print(data)
     instances = data["instances"]
     
-    # Convert to DataFrame
-    df = pd.DataFrame(instances)
-    
-    # Ensure correct feature order
+    # Convert to numpy array
     feature_names = feels_metadata['feature_names']
-    for feature in feature_names:
-        if feature not in df.columns:
-            df[feature] = 0
+    X = prepare_features(instances, feature_names)
     
-    df = df[feature_names]
+    # Get input name from model
+    input_name = feels_model.get_inputs()[0].name
     
     # Make prediction
-    predictions = feels_model.predict(df).tolist()
-    probabilities = feels_model.predict_proba(df).tolist()
+    outputs = feels_model.run(None, {input_name: X})
+    predictions = outputs[0]  # Class predictions are first output
+    probabilities = outputs[1] if len(outputs) > 1 else None  # Probabilities if available
+    
+    # Convert numpy arrays to lists for JSON serialization
+    predictions = predictions.tolist() if isinstance(predictions, np.ndarray) else predictions
+    probabilities = probabilities.tolist() if isinstance(probabilities, np.ndarray) else probabilities
     
     # Map numeric classes to labels
     class_mapping = feels_metadata['class_mapping']
-    prediction_labels = [class_mapping[str(p)] for p in predictions]
+    prediction_labels = [class_mapping[str(int(p))] for p in predictions]
     prediction_label = prediction_labels[0]
 
     print(prediction_label, probabilities)
@@ -92,19 +102,19 @@ def predict_clothing():
     print(data)
     instances = data["instances"]
     
-    # Convert to DataFrame
-    df = pd.DataFrame(instances)
-    
-    # Ensure correct feature order
+    # Convert to numpy array
     feature_names = clothing_metadata['feature_names']
-    for feature in feature_names:
-        if feature not in df.columns:
-            df[feature] = 0
+    X = prepare_features(instances, feature_names)
     
-    df = df[feature_names]
+    # Get input name from model
+    input_name = clothing_model.get_inputs()[0].name
     
     # Make prediction
-    predictions = clothing_model.predict(df).tolist()
+    outputs = clothing_model.run(None, {input_name: X})
+    predictions = outputs[0]  # Get first output
+    
+    # Convert numpy arrays to lists for JSON serialization
+    predictions = predictions.tolist() if isinstance(predictions, np.ndarray) else predictions
     
     # Get target column names
     target_cols = clothing_metadata['target_columns']

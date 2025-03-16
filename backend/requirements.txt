@@ -5,9 +5,12 @@
 # Core dependencies
 Flask==3.0.2
 flask-cors==4.0.0
-pandas==2.2.1
-scikit-learn==1.5.1
+onnxruntime==1.17.0
 numpy==1.26.4
+
+# Development dependencies (not needed for deployment)
+# skl2onnx==1.14.1  # Only needed for model conversion
+# scikit-learn==1.5.1
 
 # Not directly used in code
 # python-dotenv==1.0.0
