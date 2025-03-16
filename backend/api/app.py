@@ -14,7 +14,9 @@ def home():
 
 def get_model_paths(model_name):
     """Get paths for a specific model"""
-    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"models/{model_name}/")
+    # Go up one directory from api/ to backend/
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    model_dir = os.path.join(base_dir, "models", model_name)
     meta_path = os.path.join(model_dir, "model_meta.json")
     latest_path = os.path.join(model_dir, "latest_version.txt")
     return model_dir, meta_path, latest_path
