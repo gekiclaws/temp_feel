@@ -1,6 +1,7 @@
 import pickle
 import os
 import json
+import onnx
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 
@@ -22,12 +23,20 @@ def convert_model(model_name):
     # Convert to ONNX
     initial_type = [('float_input', FloatTensorType([None, n_features]))]
     onx = convert_sklearn(model, initial_types=initial_type)
-    
+
+    # Ensure the ONNX model is using IR version 9
+    onnx_model = onnx.load_model_from_string(onx.SerializeToString())
+    onnx_model.ir_version = 9  # Set IR version to 9
+    onnx.checker.check_model(onnx_model)
+
     # Save ONNX model
-    with open(os.path.join(model_dir, 'model.onnx'), 'wb') as f:
-        f.write(onx.SerializeToString())
+    output_path = os.path.join(model_dir, 'model.onnx')
+    with open(output_path, 'wb') as f:
+        f.write(onnx_model.SerializeToString())
+
+    print(f"Successfully converted {model_name} model to ONNX with IR version 9.")
 
 if __name__ == '__main__':
     # Convert both models
     convert_model('feels')
-    convert_model('clothing') 
+    convert_model('clothing')

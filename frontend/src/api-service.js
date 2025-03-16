@@ -1,5 +1,6 @@
 // api-service.js
-const API_BASE_URL = 'http://localhost:8080';
+// const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'https://temp-feel-api.vercel.app';
 
 /**
  * Predicts comfort level based on clothing and environmental factors
