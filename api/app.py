@@ -8,6 +8,10 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+@app.route('/')
+def home():
+    return 'Hello, World!'
+
 def get_model_paths(model_name):
     """Get paths for a specific model"""
     model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"models/{model_name}/")
