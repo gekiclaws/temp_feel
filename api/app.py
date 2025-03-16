@@ -39,7 +39,7 @@ def load_model(model_name):
 feels_model, feels_metadata = load_model('feels')
 clothing_model, clothing_metadata = load_model('clothing')
 
-@app.route("/predict-feels", methods=["POST"])
+@app.route("/api/predict-feels", methods=["POST"])
 def predict_feels():
     if feels_model is None:
         print("No feels model loaded")
@@ -76,7 +76,7 @@ def predict_feels():
         "probabilities": probabilities
     })
 
-@app.route("/predict-clothing", methods=["POST"])
+@app.route("/api/predict-clothing", methods=["POST"])
 def predict_clothing():
     if clothing_model is None:
         print("No clothing model loaded")
