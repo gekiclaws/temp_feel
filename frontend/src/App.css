@@ -1,3 +1,10 @@
+/* Use a global box-sizing rule for consistent sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .comfort-prediction-container {
   max-width: 1000px;
   margin: 0 auto;
@@ -25,6 +32,7 @@ h3 {
   font-size: 1.1rem;
 }
 
+/* Keep if you still need the prediction mode section; otherwise remove */
 .prediction-mode-selector {
   display: flex;
   justify-content: center;
@@ -47,9 +55,11 @@ h3 {
   margin-bottom: 30px;
 }
 
+/* Constrain each form section so it doesn’t become too wide */
 .form-section {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 280px;
+  max-width: 480px; /* Adjust as needed */
   background-color: #f8f9fa;
   padding: 20px;
   border-radius: 8px;
@@ -106,6 +116,7 @@ label {
   font-weight: 500;
 }
 
+/* Make sure inputs and selects fit within their containers */
 input[type="number"],
 select {
   width: 100%;
@@ -113,6 +124,7 @@ select {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
+  box-sizing: border-box; /* Ensures no overflow */
 }
 
 input:disabled,
@@ -151,7 +163,7 @@ select:disabled {
   gap: 15px;
 }
 
-.submit-button, 
+.submit-button,
 .reset-button {
   padding: 12px 24px;
   border: none;
@@ -199,11 +211,12 @@ select:disabled {
   .form-sections {
     flex-direction: column;
   }
-  
+
   .form-section {
     width: 100%;
+    max-width: 100%; /* Let sections be full-width on mobile */
   }
-  
+
   .clothing-options {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
@@ -246,6 +259,6 @@ select:disabled {
 }
 
 .highlight-feels {
-  background-color: #27ae60!important;
-  color: white!important;
+  background-color: #27ae60 !important;
+  color: white !important;
 }

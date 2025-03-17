@@ -6,7 +6,7 @@ const ComfortPredictionForm = () => {
   const lastSubmittedData = useRef(null);
   const [formChanged, setFormChanged] = useState(false);
 
-  // Remove predictionMode – we only support comfort prediction now.
+  // Remove "feels" from the user-input data.
   const [formData, setFormData] = useState({
     temp: 20,
     sun: false,
@@ -14,8 +14,7 @@ const ComfortPredictionForm = () => {
     snow: 'NONE',
     rain: 'NONE',
     fatigued: false,
-    hr: 90,
-    feels: 'COOL'
+    hr: 90
   });
 
   // Updated keys to match the new API schema.
@@ -37,9 +36,14 @@ const ComfortPredictionForm = () => {
     p_down: false
   });
 
+  // New state for predicted feels and accuracy, plus a flag for update animation
+  const [predictedFeels, setPredictedFeels] = useState('COOL');
+  const [predictionAccuracy, setPredictionAccuracy] = useState(null);
+  const [feelsUpdated, setFeelsUpdated] = useState(false);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => {
+    setFormData((prev) => {
       const updated = {
         ...prev,
         [name]: type === 'checkbox' ? checked : value
@@ -57,20 +61,14 @@ const ComfortPredictionForm = () => {
 
   const handleClothingChange = (category, item) => {
     if (category === 'upper') {
-      setUpperClothing(prev => {
-        const updated = {
-          ...prev,
-          [item]: !prev[item]
-        };
+      setUpperClothing((prev) => {
+        const updated = { ...prev, [item]: !prev[item] };
         setFormChanged(true);
         return updated;
       });
     } else if (category === 'lower') {
-      setLowerClothing(prev => {
-        const updated = {
-          ...prev,
-          [item]: !prev[item]
-        };
+      setLowerClothing((prev) => {
+        const updated = { ...prev, [item]: !prev[item] };
         setFormChanged(true);
         return updated;
       });
@@ -80,19 +78,15 @@ const ComfortPredictionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Prepare one-hot encoded clothing data by merging upper and lower clothing selections.
-    // (Here, the boolean values will be converted to 0/1 by the API service.)
+    // Merge clothing data from upper and lower selections.
     const clothingData = { ...upperClothing, ...lowerClothing };
 
-    // Build the API payload using the updated raw schema:
-    // t_dress, t_poly, t_cot, sleeves, j_light, j_fleece, j_down,
-    // shorts, p_thin, p_thick, p_fleece, p_down, temp, sun, headwind, snow, rain, fatigued, hr, feels
+    // Build the API payload (note: "feels" is now predicted, so it’s omitted).
     const apiData = {
       ...clothingData,
       temp: formData.temp,
       sun: formData.sun ? 1 : 0,
       headwind: formData.headwind ? 1 : 0,
-      // Convert the intensity strings using the helper function
       snow: mapIntensityToNumber(formData.snow),
       rain: mapIntensityToNumber(formData.rain),
       fatigued: formData.fatigued ? 1 : 0,
@@ -110,10 +104,14 @@ const ComfortPredictionForm = () => {
             warm: 'WARM',
             hot: 'HOT'
           };
-          setFormData(prev => ({
-            ...prev,
-            feels: feelsMapping[result.prediction.toLowerCase()] || prev.feels
-          }));
+          const newFeels = feelsMapping[result.prediction.toLowerCase()] || predictedFeels;
+          setPredictedFeels(newFeels);
+          if (result.model_accuracy !== undefined) {
+            setPredictionAccuracy(result.model_accuracy);
+          }
+          // Trigger a brief update animation
+          setFeelsUpdated(true);
+          setTimeout(() => setFeelsUpdated(false), 3000);
         }
         lastSubmittedData.current = { ...apiData };
         setFormChanged(false);
@@ -133,8 +131,7 @@ const ComfortPredictionForm = () => {
       snow: 'NONE',
       rain: 'NONE',
       fatigued: false,
-      hr: 90,
-      feels: 'COOL'
+      hr: 90
     });
     setUpperClothing({
       t_dress: false,
@@ -156,9 +153,9 @@ const ComfortPredictionForm = () => {
     lastSubmittedData.current = null;
   };
 
-  // Update clothing labels to match new keys
+  // Updated clothing labels.
   const clothingLabels = {
-    t_dress: "Dress Shirt/T-Shirt",
+    t_dress: "Dress T-Shirt",
     t_poly: "Polyester T-Shirt",
     t_cot: "Cotton T-Shirt",
     sleeves: "Long Sleeve Shirt",
@@ -169,7 +166,7 @@ const ComfortPredictionForm = () => {
     p_thin: "Thin Pants",
     p_thick: "Thick Pants",
     p_fleece: "Fleece Pants",
-    p_down: "Insulated/Down Pants"
+    p_down: "Down Pants"
   };
 
   return (
@@ -183,7 +180,7 @@ const ComfortPredictionForm = () => {
             <div className="clothing-type">
               <h3>Upper Body</h3>
               <div className="clothing-options">
-                {Object.keys(upperClothing).map(item => (
+                {Object.keys(upperClothing).map((item) => (
                   <div className="clothing-item" key={item}>
                     <label>
                       <input
@@ -201,7 +198,7 @@ const ComfortPredictionForm = () => {
             <div className="clothing-type">
               <h3>Lower Body</h3>
               <div className="clothing-options">
-                {Object.keys(lowerClothing).map(item => (
+                {Object.keys(lowerClothing).map((item) => (
                   <div className="clothing-item" key={item}>
                     <label>
                       <input
@@ -256,12 +253,7 @@ const ComfortPredictionForm = () => {
             </div>
             <div className="form-group">
               <label htmlFor="snow">Snow</label>
-              <select
-                id="snow"
-                name="snow"
-                value={formData.snow}
-                onChange={handleChange}
-              >
+              <select id="snow" name="snow" value={formData.snow} onChange={handleChange}>
                 <option value="NONE">None</option>
                 <option value="LIGHT">Light</option>
                 <option value="MEDIUM">Medium</option>
@@ -270,12 +262,7 @@ const ComfortPredictionForm = () => {
             </div>
             <div className="form-group">
               <label htmlFor="rain">Rain</label>
-              <select
-                id="rain"
-                name="rain"
-                value={formData.rain}
-                onChange={handleChange}
-              >
+              <select id="rain" name="rain" value={formData.rain} onChange={handleChange}>
                 <option value="NONE">None</option>
                 <option value="LIGHT">Light</option>
                 <option value="MEDIUM">Medium</option>
@@ -310,20 +297,6 @@ const ComfortPredictionForm = () => {
                 placeholder="Heart rate in BPM"
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="feels">Feels</label>
-              <select
-                id="feels"
-                name="feels"
-                value={formData.feels}
-                onChange={handleChange}
-              >
-                <option value="COLD">Cold</option>
-                <option value="COOL">Cool</option>
-                <option value="WARM">Warm</option>
-                <option value="HOT">Hot</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -336,6 +309,20 @@ const ComfortPredictionForm = () => {
           </button>
         </div>
       </form>
+
+      {/* Feels Report Section (read-only) */}
+      <div className={`feels-report ${feelsUpdated ? 'updated' : ''}`}>
+        <h2>Feels Report</h2>
+        <p>
+          Feels: <strong>{predictedFeels}</strong>
+        </p>
+        <p>
+          Accuracy:{' '}
+          <strong>
+            {predictionAccuracy !== null ? predictionAccuracy.toFixed(3) : 'N/A'}
+          </strong>
+        </p>
+      </div>
     </div>
   );
 };
