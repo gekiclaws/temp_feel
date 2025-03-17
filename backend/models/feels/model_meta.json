@@ -1,0 +1,1 @@
+{"version": "20250317_015600", "target": "feels", "model_type": "classifier", "accuracy": 0.6176470588235294, "timestamp": "2025-03-17T01:56:00.342690", "feature_names": ["upr_clo", "lwr_clo", "temp", "sun", "headwind", "snow", "rain", "fatigued", "hr"], "class_mapping": {"0": "cold", "1": "cool", "2": "warm", "3": "hot"}, "best_params": {"max_depth": null, "n_estimators": 100}}

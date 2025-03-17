@@ -14,5 +14,4 @@ env.bak/
 venv.bak/ 
 
 # Generated files
-models/
 data/*.txt
