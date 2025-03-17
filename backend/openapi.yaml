@@ -2,43 +2,107 @@ openapi: 3.0.0
 info:
   title: Temp Feel API
   description: API for predicting comfort feeling and recommending clothing based on input features
-  version: 0.1.0
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8080
     description: Local development server
+  - url: https://temp-feel-api.vercel.app
+    description: Production server
 
 paths:
-  /predict-feels:
+  /predict/feels:
     post:
       summary: Predict comfort feelings based on input features
-      description: Returns a prediction of comfort feelings and probability scores for each possible class
-      operationId: predictFeels
+      description: Returns a prediction of comfort feelings based on environmental and personal conditions
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - instances
               properties:
                 instances:
                   type: array
                   items:
                     type: object
-                    additionalProperties:
-                      type: number
-                  description: Array of feature instances to predict
-                  example:
-                    - temp: 25
-                      sun: 0
-                      headwind: 0
-                      snow: 0
-                      rain: 0
-                      fatigued: 0
-                      hr: 75
-                      feels: 0
+                    properties:
+                      t_dress:
+                        type: number
+                        description: Presence of dress tee
+                        example: 0
+                      t_poly:
+                        type: number
+                        description: Presence of polyester tee
+                        example: 1
+                      t_cot:
+                        type: number
+                        description: Presence of cotton tee
+                        example: 0
+                      sleeves:
+                        type: number
+                        description: Presence of sleeves
+                        example: 1
+                      j_light:
+                        type: number
+                        description: Presence of light jacket
+                        example: 0
+                      j_fleece:
+                        type: number
+                        description: Presence of fleece jacket
+                        example: 0
+                      j_down:
+                        type: number
+                        description: Presence of down jacket
+                        example: 0
+                      shorts:
+                        type: number
+                        description: Presence of shorts
+                        example: 0
+                      p_thin:
+                        type: number
+                        description: Presence of thin pants
+                        example: 0
+                      p_thick:
+                        type: number
+                        description: Presence of thick pants
+                        example: 0
+                      p_fleece:
+                        type: number
+                        description: Presence of fleece pants
+                        example: 0
+                      p_down:
+                        type: number
+                        description: Presence of down pants
+                        example: 0
+                      temp:
+                        type: number
+                        description: Temperature in Celsius
+                        example: 25
+                      sun:
+                        type: number
+                        description: Sun intensity (0-1)
+                        example: 0
+                      headwind:
+                        type: number
+                        description: Headwind speed
+                        example: 0
+                      snow:
+                        type: number
+                        description: Snow intensity (0-1)
+                        example: 0
+                      rain:
+                        type: number
+                        description: Rain intensity (0-1)
+                        example: 0
+                      fatigued:
+                        type: number
+                        description: Fatigue level (0-1)
+                        example: 0
+                      hr:
+                        type: number
+                        description: Heart rate
+                        example: 75
       responses:
         '200':
           description: Successful prediction
@@ -49,84 +113,19 @@ paths:
                 properties:
                   prediction:
                     type: string
-                    description: The predicted feeling label
-                    example: "1"
+                    description: The predicted feeling class
+                    example: 'warm'
                   probabilities:
                     type: array
                     items:
-                      type: array
-                      items:
-                        type: number
-                    description: Probability scores for each possible class
-                    example:
-                      - 0.1
-                      - 0.7
-                      - 0.2
-                      - 0.0
-        '503':
-          description: Service unavailable - model not loaded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "No feels model loaded"
-
-  /predict-clothing:
-    post:
-      summary: Predict clothing recommendations
-      description: Returns clothing recommendations based on input features
-      operationId: predictClothing
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - instances
-              properties:
-                instances:
-                  type: array
-                  items:
-                    type: object
-                    additionalProperties:
-                      type: number
-                  description: Array of feature instances to predict
-                  example:
-                    - temp: 25
-                      sun: 0
-                      headwind: 0
-                      snow: 0
-                      rain: 0
-                      fatigued: 0
-                      hr: 75
-                      feels: 0
-      responses:
-        '200':
-          description: Successful prediction
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  predictions:
-                    type: object
-                    additionalProperties:
-                      type: string
-                    description: Dictionary mapping clothing categories to recommendations
-                    example:
-                      lwr_clo: 0.5
-                      upr_clo: 0.2
-        '503':
-          description: Service unavailable - model not loaded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "No clothing model loaded" 
+                      type: object
+                    description: Probability scores for each class
+                    example: [{0: 0.3099999725818634, 1: 0.6399998664855957, 2: 0.04999999701976776, 3: 0.0}]
+                  accuracy:
+                    type: number
+                    description: Model accuracy
+                    example: 0.6470588235294118
+        '400':
+          description: Bad request - invalid input
+        '500':
+          description: Internal server error

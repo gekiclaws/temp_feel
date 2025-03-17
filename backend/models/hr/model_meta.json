@@ -1,1 +1,0 @@
-{"version": "20250317_015601", "target": "hr", "model_type": "regressor", "r2_score": -0.26909634702253205, "timestamp": "2025-03-17T01:56:01.632766", "feature_names": ["upr_clo", "lwr_clo", "temp", "sun", "headwind", "snow", "rain", "fatigued", "feels"], "best_params": {"max_depth": null, "min_samples_leaf": 4, "n_estimators": 300}}

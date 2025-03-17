@@ -4,37 +4,33 @@ A predictive system that correlates clothing choices with physiological data and
 
 ## Prerequisites
 
-- Python 3.x
+- Python 3.x + pip
 - Node.js and npm
 - Java 11+ (for Java client)
-- Required Python packages (install via `pip install -r requirements.txt`):
-  - Flask
-  - pandas
-  - scikit-learn
-  - numpy
 
 ## Setup and Installation
 
 ### API Setup
-1. Navigate to the `api` directory:
+1. Navigate to the `backend` directory:
    ```bash
-   cd api
+   cd backend
    ```
 
-2. Install Python dependencies:
+2. Open requirements.txt and uncomment the developer dependenices, then install them:
    ```bash
+   vim requirements.txt
    pip install -r requirements.txt
    ```
 
 3. Review `data/parameters.csv` to understand the dataset parameters and their meanings
 
 4. Data preparation:
-   - Rename the `data/cleaned_data_sample.csv` sample to `cleaned_data.csv` for testing, or
-   - Replace it with your own data following the same schema
+   - Replace `data/cleaned_data.csv` with your own data following the same schema or use as is for testing
    - Ensure your data matches the format in `parameters.csv`
 
 5. Train the prediction models:
    ```bash
+   python3 training/parse_cleaned_data.py
    python3 training/train.py
    ```
 
@@ -55,7 +51,9 @@ A predictive system that correlates clothing choices with physiological data and
    npm install
    ```
 
-3. Start the React development server:
+3. In `src/api-service.js`, set `API_BASE_URL` to `http:localhost:8080`.
+
+4. Start the React development server:
    ```bash
    npm start
    ```
@@ -77,20 +75,15 @@ A predictive system that correlates clothing choices with physiological data and
 ## Usage
 
 1. Open your browser and navigate to `http://localhost:3000`
-2. Choose between two modes:
-   - **Predict Comfort**: Input environmental conditions and clothing to predict comfort level
-   - **Recommend Clothing**: Input conditions and current comfort to get clothing recommendations
-3. Fill in the required information:
+2. Fill in the required information:
    - Temperature
    - Environmental conditions (sun, wind, precipitation)
    - Heart rate and fatigue level
-   - Current clothing (for comfort prediction)
-   - Comfort level (for clothing recommendations)
+   - Current clothing
 
 ## Troubleshooting
 
 - If the API isn't responding, check if the Flask server is running on port 8080
-- If you see CORS errors, ensure the API is properly configured to accept requests from the frontend
 - For data-related issues, verify your CSV file matches the expected schema
 - For Java client issues, ensure Java 11+ is installed
 
