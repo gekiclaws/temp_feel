@@ -40,42 +40,6 @@ export const predictComfort = async (formData) => {
     }
   };
 
-/**
- * Predicts recommended clothing based on environmental factors
- */
-export const predictClothing = async (formData) => {
-    try {
-      // Extract only the fields needed by the model
-      const modelInputData = {
-        temp: formData.temp,
-        sun: formData.sun ? 1 : 0,
-        headwind: formData.headwind ? 1 : 0,
-        snow: mapIntensityToNumber(formData.snow),
-        rain: mapIntensityToNumber(formData.rain),
-        fatigued: formData.fatigued ? 1 : 0,
-        hr: formData.hr,
-        feels: mapFeelsToNumber(formData.feels)
-      };
-
-      const response = await fetch(`${API_BASE_URL}/predict/clothing`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ instances: [modelInputData] }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error('Error predicting clothing:', error);
-      throw error;
-    }
-  };
-  
   // Helper function to map feels values to numbers
   function mapFeelsToNumber(feels) {
     const feelsMap = {

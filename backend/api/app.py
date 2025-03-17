@@ -92,42 +92,5 @@ def predict_feels():
         "probabilities": probabilities
     })
 
-@app.route("/predict/clothing", methods=["POST"])
-def predict_clothing():
-    if clothing_model is None:
-        print("No clothing model loaded")
-        return jsonify({"error": "No clothing model loaded"}), 503
-    
-    data = request.json
-    print(data)
-    instances = data["instances"]
-    
-    # Convert to numpy array
-    feature_names = clothing_metadata['feature_names']
-    X = prepare_features(instances, feature_names)
-    
-    # Get input name from model
-    input_name = clothing_model.get_inputs()[0].name
-    
-    # Make prediction
-    outputs = clothing_model.run(None, {input_name: X})
-    predictions = outputs[0]  # Get first output
-    
-    # Convert numpy arrays to lists for JSON serialization
-    predictions = predictions.tolist() if isinstance(predictions, np.ndarray) else predictions
-    
-    # Get target column names
-    target_cols = clothing_metadata['target_columns']
-    
-    # Format predictions as dict mapping target names to values
-    prediction_dict = {}
-    for i, col in enumerate(target_cols):
-        prediction_dict[col] = predictions[0][i]
-    print(prediction_dict)
-    
-    return jsonify({
-        "predictions": prediction_dict
-    })
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
