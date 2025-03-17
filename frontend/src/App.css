@@ -258,7 +258,27 @@ select:disabled {
   cursor: not-allowed;
 }
 
-.highlight-feels {
-  background-color: #27ae60 !important;
-  color: white !important;
+/* Add or adjust this in your App.css */
+
+/* Base styling for the Feels Report container */
+.feels-report {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  /* Provide a transition for a simple color fade */
+  transition: background-color 0.4s ease;
+}
+
+.feels-report.updated {
+  animation: highlight 1.5s forwards;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: #d7ffcc;
+  }
+  100% {
+    background-color: #f8f9fa;
+  }
 }

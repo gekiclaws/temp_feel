@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:8080';
+// const API_BASE_URL = 'http://localhost:8080';
+const API_BASE_URL = 'https://temp-feel-api.vercel.app';
 
 export const predictComfort = async (formData) => {
   try {

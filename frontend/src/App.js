@@ -111,7 +111,7 @@ const ComfortPredictionForm = () => {
           }
           // Trigger a brief update animation
           setFeelsUpdated(true);
-          setTimeout(() => setFeelsUpdated(false), 3000);
+          setTimeout(() => setFeelsUpdated(false), 1000);
         }
         lastSubmittedData.current = { ...apiData };
         setFormChanged(false);
