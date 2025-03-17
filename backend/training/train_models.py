@@ -1,18 +1,21 @@
 import os
 import json
 import pickle
-
 import pandas as pd
 from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 
+import onnx
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
+
 # Base configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, "../data/cleaned_data.csv")
+DATA_PATH = os.path.join(BASE_DIR, "../data/computed_data.csv")
 
 def get_model_paths(target_name):
-    """Generate model paths for a specific target feature"""
+    """Generate model paths for a specific target feature."""
     model_dir = os.path.join(BASE_DIR, f"../models/{target_name}/")
     os.makedirs(model_dir, exist_ok=True)
     version = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -20,19 +23,36 @@ def get_model_paths(target_name):
     return {
         'dir': model_dir,
         'version': version,
-        'model_path': os.path.join(model_dir, f"model_{version}.pkl"),
+        'model_path': os.path.join(model_dir, f"model.pkl"),
         'meta_path': os.path.join(model_dir, "model_meta.json"),
         'latest_path': os.path.join(model_dir, "latest_version.txt")
     }
 
 def load_data():
-    """Load and return the dataset"""
+    """Load and return the dataset."""
     df = pd.read_csv(DATA_PATH)
     print(f"Loaded {df.shape[0]} samples")
     return df
 
+def convert_model_to_onnx(model, metadata, paths):
+    """Convert the trained model to ONNX format and save it."""
+    n_features = len(metadata['feature_names'])
+    initial_type = [('float_input', FloatTensorType([None, n_features]))]
+    onx = convert_sklearn(model, initial_types=initial_type)
+    
+    # Ensure the ONNX model uses IR version 9
+    onnx_model = onnx.load_model_from_string(onx.SerializeToString())
+    onnx_model.ir_version = 9
+    onnx.checker.check_model(onnx_model)
+    
+    output_path = os.path.join(paths['dir'], 'model.onnx')
+    with open(output_path, 'wb') as f:
+        f.write(onnx_model.SerializeToString())
+        
+    print(f"Successfully converted model to ONNX with IR version 9. Saved at {output_path}")
+
 def train_classifier(target_name, feature_cols=None, param_grid=None, test_size=0.25):
-    """Train a RandomForestClassifier for a categorical target variable"""
+    """Train a RandomForestClassifier for a categorical target variable."""
     # Load data
     df = load_data()
     
@@ -63,30 +83,37 @@ def train_classifier(target_name, feature_cols=None, param_grid=None, test_size=
     clf.fit(X_train, y_train)
     model = clf.best_estimator_
     
-    # Evaluate
+    # Evaluate model
     accuracy = model.score(X_test, y_test)
     print(f"Model accuracy: {accuracy:.4f}")
     
-    # Get unique class values and create mapping
-    # Map numeric values to descriptive labels based on dataset values
+    # Compute feature importances if available
+    if hasattr(model, 'feature_importances_'):
+        feature_importances = dict(zip(X.columns, model.feature_importances_))
+        print("Feature importances:")
+        for feature, importance in feature_importances.items():
+            print(f"  {feature}: {importance:.4f}")
+    else:
+        feature_importances = {}
+    
+    # Map numeric class values to descriptive labels
     feels_labels = {
         0: 'cold',
         1: 'cool',
         2: 'warm', 
         3: 'hot'
     }
-    # Get unique classes from dataset and map to descriptive labels
     classes = sorted(y.unique())
     class_mapping = {str(val): feels_labels[val] for val in classes}
     
-    # Get paths for this target
+    # Get file paths for saving the model and metadata
     paths = get_model_paths(target_name)
     
-    # Save model
+    # Save the trained model
     with open(paths['model_path'], 'wb') as f:
         pickle.dump(model, f)
     
-    # Save metadata
+    # Save metadata (including feature importances)
     metadata = {
         'version': paths['version'],
         'target': target_name,
@@ -94,6 +121,7 @@ def train_classifier(target_name, feature_cols=None, param_grid=None, test_size=
         'accuracy': float(accuracy),
         'timestamp': datetime.now().isoformat(),
         'feature_names': X.columns.tolist(),
+        'feature_importances': feature_importances,
         'class_mapping': class_mapping,
         'best_params': clf.best_params_
     }
@@ -105,10 +133,14 @@ def train_classifier(target_name, feature_cols=None, param_grid=None, test_size=
         f.write(paths['version'])
     
     print(f"Model saved to {paths['model_path']}")
+    
+    # Convert the trained model to ONNX format
+    convert_model_to_onnx(model, metadata, paths)
+    
     return model, metadata
 
 def train_feels_model():
-    """Train the model for predicting 'feels' value"""
+    """Train the model for predicting 'feels' value."""
     print("Training 'feels' prediction model...")
     
     # Train model
