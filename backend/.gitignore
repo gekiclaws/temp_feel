@@ -1,11 +1,6 @@
 # Models
 models/
 
-# Data
-data/
-!data/cleaned_data_sample.csv
-!data/parameters.csv
-
 # Vercel
 .vercel
 *.log
