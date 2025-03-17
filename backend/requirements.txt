@@ -1,19 +1,13 @@
-# Build tools - not needed for runtime
-# wheel==0.42.0
-# setuptools==69.1.1
-
 # Core dependencies
-Flask==3.0.2
+flask==3.0.2
 flask-cors==4.0.0
 onnxruntime==1.17.0
 numpy==1.26.4
 
 # Development dependencies (not needed for deployment)
-# skl2onnx==1.14.1  # Only needed for model conversion
+# pandas==1.4.0
+# scipy==1.7.3
 # scikit-learn==1.5.1
-
-# Not directly used in code
-# python-dotenv==1.0.0
-# requests==2.31.0
-# gunicorn==21.2.0
-# pytest==8.0.2
+# tensorflow==2.7.0
+# onnx==1.10.1
+# skl2onnx==1.14.1
