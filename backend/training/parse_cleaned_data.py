@@ -1,16 +1,22 @@
+import os
+import random
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import random
-import os
 from tensorflow import keras
 from tensorflow.keras import layers
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import scipy.stats
 
+# Additional imports for conversion to ONNX
+import tf2onnx
+import onnx
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
+
 # 🟢 Load your CSV dataset
-file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/cleaned_data.csv")  # 🔹 Change this to your actual file path
+file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/cleaned_data.csv")
 data = pd.read_csv(file_path)
 
 # 🟢 Define expected Clo values for validation
@@ -20,7 +26,7 @@ expected_clo = {
     "shorts": 0.06, "p_thin": 0.15, "p_thick": 0.24, "p_fleece": 0.80, "p_down": 0.90
 }
 
-# 🟢 Separate upper and lower body clothing
+# 🟢 Separate upper and lower body clothing features
 upper_clothing_features = ["t_dress", "t_poly", "t_cot", "sleeves", "j_light", "j_fleece", "j_down"]
 lower_clothing_features = ["shorts", "p_thin", "p_thick", "p_fleece", "p_down"]
 
@@ -39,8 +45,6 @@ np.random.seed(SEED)
 random.seed(SEED)
 tf.random.set_seed(SEED)
 os.environ['PYTHONHASHSEED'] = str(SEED)
-
-# 🟢 Force TensorFlow to use deterministic operations (CPU only)
 tf.config.experimental.enable_op_determinism()
 
 # 🟢 Define Autoencoder Model for Upper Body
@@ -67,27 +71,57 @@ def build_autoencoder(input_dim):
     autoencoder.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0005), loss="mse")
     return autoencoder, encoder
 
-# 🟢 Train Autoencoder for Upper Body (More Complex Interactions)
+# 🟢 Train Autoencoder for Upper Body
 autoencoder_upper, encoder_upper = build_autoencoder(X_upper_scaled.shape[1])
 autoencoder_upper.fit(X_upper_scaled, X_upper_scaled, epochs=300, batch_size=16, verbose=1)
 
-# 🟢 Use PCA for Lower Body (Since PCA is as Good as Autoencoder Here)
+# 🟢 Use PCA for Lower Body
 pca_lower = PCA(n_components=1)
 lwr_clo_pca = pca_lower.fit_transform(X_lower_scaled)
 
-# 🟢 Extract insulation features
-data["upr_clo"] = encoder_upper.predict(X_upper_scaled)  # Rename to final format
-data["lwr_clo"] = lwr_clo_pca  # PCA for Lower Body (Renamed)
+# ── Export trained models and scalers for later lightweight inference ──
 
-# 🟢 Compute expected insulation values for validation
+# Create a directory to store the models if it doesn't exist
+models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../models")
+os.makedirs(models_dir, exist_ok=True)
+
+# Save scaler parameters (mean and scale) so that inference code can normalize input data using numpy
+scaler_upper_params = {"mean": scaler_upper.mean_, "scale": scaler_upper.scale_}
+np.savez(os.path.join(models_dir, "scaler_upper.npz"), **scaler_upper_params)
+
+scaler_lower_params = {"mean": scaler_lower.mean_, "scale": scaler_lower.scale_}
+np.savez(os.path.join(models_dir, "scaler_lower.npz"), **scaler_lower_params)
+
+# Convert and save the upper body encoder (autoencoder part) to ONNX format
+spec = (tf.TensorSpec((None, X_upper_scaled.shape[1]), tf.float32, name="input"),)
+encoder_onnx_model, _ = tf2onnx.convert.from_keras(encoder_upper, input_signature=spec, opset=13)
+encoder_onnx_path = os.path.join(models_dir, "encoder_upper.onnx")
+onnx.save(encoder_onnx_model, encoder_onnx_path)
+print(f"✅ Saved encoder model to {encoder_onnx_path}")
+
+# Convert and save the PCA model for lower body to ONNX format
+initial_type = [('input', FloatTensorType([None, X_lower_scaled.shape[1]]))]
+pca_onnx_model = convert_sklearn(pca_lower, initial_types=initial_type)
+pca_onnx_path = os.path.join(models_dir, "pca_lower.onnx")
+with open(pca_onnx_path, "wb") as f:
+    f.write(pca_onnx_model.SerializeToString())
+print(f"✅ Saved PCA model to {pca_onnx_path}")
+
+# ── Continue with feature extraction and validation ──
+
+# Extract insulation features using the trained models
+data["upr_clo"] = encoder_upper.predict(X_upper_scaled)  # For upper body insulation
+data["lwr_clo"] = lwr_clo_pca  # For lower body insulation (PCA)
+
+# Compute expected insulation values for validation
 expected_upper_insulation = np.dot(X_upper, np.array([expected_clo[f] for f in upper_clothing_features]))
 expected_lower_insulation = np.dot(X_lower, np.array([expected_clo[f] for f in lower_clothing_features]))
 
-# 🟢 Compute correlation between Autoencoder/PCA insulation and expected Clo values
+# Compute correlation between predicted insulation and expected values
 corr_upper, p_upper = scipy.stats.pearsonr(data["upr_clo"], expected_upper_insulation)
 corr_lower, p_lower = scipy.stats.pearsonr(data["lwr_clo"], expected_lower_insulation)
 
-# 🟢 Systematically Correct Flipped Signage
+# Systematically correct flipped signage if correlation is negative
 if corr_upper < 0:
     print("⚠️ Upper Body Autoencoder correlation is negative. Flipping sign...")
     data["upr_clo"] *= -1
@@ -98,16 +132,16 @@ if corr_lower < 0:
     data["lwr_clo"] *= -1
     corr_lower, p_lower = scipy.stats.pearsonr(data["lwr_clo"], expected_lower_insulation)
 
-# 🔬 Print corrected correlation results
+# Print validation results
 print("\n🔬 **Validation of Final Insulation Features**")
 print(f"✅ Upper Body Autoencoder Correlation (Fixed): {corr_upper:.3f} (p={p_upper:.3f})")
 print(f"✅ Lower Body PCA Correlation (Fixed): {corr_lower:.3f} (p={p_lower:.3f})")
 
-# 🟢 Retain only necessary columns for final dataset
+# Retain only necessary columns for final dataset
 final_columns = ["upr_clo", "lwr_clo", "temp", "sun", "headwind", "snow", "rain", "fatigued", "hr", "feels"]
 data = data[final_columns]
 
-# 🟢 Save the cleaned and formatted dataset
+# Save the final computed dataset
 output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/computed_data.csv")
-data.to_csv(output_file, index=False, sep=",")  # Save as tab-separated for readability
+data.to_csv(output_file, index=False, sep=",")
 print(f"✅ Processed dataset saved as {output_file}")
