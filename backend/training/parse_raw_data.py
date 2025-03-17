@@ -138,7 +138,7 @@ def write_csv(records, output_file):
 
 def main():
     input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/raw_data.txt")
-    output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/parsed_data.csv")
+    output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/cleaned_data.csv")
     
     # Check if input file exists
     if not os.path.exists(input_file):
