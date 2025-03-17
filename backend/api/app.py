@@ -1,6 +1,5 @@
 import os
 import json
-
 import onnxruntime as ort
 import numpy as np
 from flask import Flask, request, jsonify
@@ -10,80 +9,72 @@ app = Flask(__name__)
 CORS(app)
 
 def get_model_path(onnx_filename, model_name=None):
-    """
-    Constructs the full path to an ONNX file.
-    
-    If model_name is provided, the file is expected to reside in models/<model_name>/.
-    Otherwise, the file is assumed to be in the root of the models/ directory.
-    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if model_name:
         model_dir = os.path.join(base_dir, "models", model_name)
     else:
         model_dir = os.path.join(base_dir, "models")
-    return os.path.join(model_dir, onnx_filename)
+    model_path = os.path.join(model_dir, onnx_filename)
+    
+    print(f"🔍 Checking model path: {model_path}")
+    
+    if not os.path.exists(model_path):
+        print(f"❌ ERROR: Model file not found at {model_path}")
+    
+    return model_path
 
 def load_onnx_model(onnx_filename, model_name=None):
-    """
-    Load an ONNX model.
-    
-    Parameters:
-      onnx_filename (str): The filename of the ONNX model.
-      model_name (str, optional): The subfolder name under models/ where the file is located.
-                                  If omitted, the file is loaded from the root of models/.
-    Returns:
-      An ONNX InferenceSession or None if loading fails.
-    """
     model_path = get_model_path(onnx_filename, model_name)
     try:
         session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+        print(f"✅ Successfully loaded ONNX model: {onnx_filename}")
         return session
     except Exception as e:
-        print(f"Error loading ONNX model from '{model_path}': {e}")
+        print(f"❌ Error loading ONNX model from '{model_path}': {e}")
         return None
 
 def load_classifier_model(model_name):
-    """
-    Load a classifier model along with its metadata.
-    
-    Assumes that the classifier ONNX file is named "model.onnx" and is stored in models/<model_name>/,
-    and that the metadata is stored in a file called "model_meta.json" in the same folder.
-    """
     session = load_onnx_model("model.onnx", model_name=model_name)
     if session is None:
+        print(f"❌ ERROR: Failed to load classifier model '{model_name}'")
         return None, None
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    meta_path = os.path.join(base_dir, "models", model_name, "model_meta.json")
+
+    meta_path = get_model_path("model_meta.json", model_name)
     try:
         with open(meta_path, 'r') as f:
             metadata = json.load(f)
+        print(f"✅ Successfully loaded metadata for '{model_name}'")
     except Exception as e:
-        print(f"Error loading metadata for model '{model_name}': {e}")
+        print(f"❌ Error loading metadata for model '{model_name}': {e}")
         metadata = None
+    
     return session, metadata
 
 def load_scaler(scaler_filename):
-    """Load scaler parameters (mean and scale) from a .npz file and cast to float32."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    scaler_path = os.path.join(base_dir, "models", scaler_filename)
-    scaler_data = np.load(scaler_path)
-    mean = scaler_data['mean'].astype(np.float32)
-    scale = scaler_data['scale'].astype(np.float32)
-    return mean, scale
+    scaler_path = get_model_path(scaler_filename)
+    try:
+        scaler_data = np.load(scaler_path)
+        print(f"✅ Loaded scaler: {scaler_filename}")
+        return scaler_data['mean'].astype(np.float32), scaler_data['scale'].astype(np.float32)
+    except Exception as e:
+        print(f"❌ Error loading scaler '{scaler_filename}': {e}")
+        return None, None
 
-# Load classifier model "feels" from models/feels/
+print("🔍 Loading models...")
+
 feels_model, feels_metadata = load_classifier_model('feels')
-
-# Load preprocessing models stored in the root of models/ with specific filenames.
 upper_model = load_onnx_model("encoder_upper.onnx")
 lower_model = load_onnx_model("pca_lower.onnx")
 
-# Load scaler parameters for clothing normalization
 upper_mean, upper_scale = load_scaler("scaler_upper.npz")
 lower_mean, lower_scale = load_scaler("scaler_lower.npz")
 
+if lower_model is None:
+    raise RuntimeError("❌ CRITICAL ERROR: lower_model failed to load. Check logs.")
+
+print("✅ All models loaded successfully.")
+
 def prepare_features(instances, feature_names):
-    """Convert list of instance dictionaries to a numpy array with features in the given order"""
     X = np.zeros((len(instances), len(feature_names)), dtype=np.float32)
     for i, instance in enumerate(instances):
         for j, feature in enumerate(feature_names):
@@ -91,10 +82,7 @@ def prepare_features(instances, feature_names):
     return X
 
 def index_to_label(index, metadata):
-    """Convert a class index to a label using the class mapping in the metadata"""
     return metadata["class_mapping"].get(str(index), "Unknown")
-
-## API ##
 
 @app.route('/')
 def home():
@@ -103,14 +91,16 @@ def home():
 @app.route("/predict/feels", methods=["POST"])
 def predict_feels():
     if feels_model is None:
-        print("No feels model loaded")
+        print("❌ No feels model loaded")
         return jsonify({"error": "No feels model loaded"}), 503
 
     data = request.json
-    print("Received data:", data)
-    instances = data["instances"]
+    print("📩 Received data:", data)
 
-    # Updated raw input schema: 12 clothing features + 8 remaining features
+    instances = data.get("instances", [])
+    if not instances:
+        return jsonify({"error": "No instances provided"}), 400
+
     raw_feature_names = [
         "t_dress", "t_poly", "t_cot", "sleeves", "j_light", "j_fleece", "j_down",
         "shorts", "p_thin", "p_thick", "p_fleece", "p_down",
@@ -118,43 +108,56 @@ def predict_feels():
     ]
     X_raw = prepare_features(instances, raw_feature_names)
 
-    # Split the features: first 7 are upper clothing; next 5 are lower clothing.
-    # The remaining 8 features are for the classifier.
     upper_indices = list(range(0, 7))
     lower_indices = list(range(7, 12))
     classifier_rest_indices = list(range(12, 19))
 
-    X_upper_raw = X_raw[:, upper_indices]  # shape (n,7)
-    X_lower_raw = X_raw[:, lower_indices]  # shape (n,5)
-    X_rest = X_raw[:, classifier_rest_indices]  # shape (n,7)
+    X_upper_raw = X_raw[:, upper_indices]
+    X_lower_raw = X_raw[:, lower_indices]
+    X_rest = X_raw[:, classifier_rest_indices]
 
-    # Normalize clothing features using saved scalers
+    print("🔍 Normalizing features...")
     X_upper_norm = (X_upper_raw - upper_mean) / upper_scale
     X_lower_norm = (X_lower_raw - lower_mean) / lower_scale
 
-    # Process clothing features through unsupervised models to get insulation features.
-    upper_input_name = upper_model.get_inputs()[0].name
-    lower_input_name = lower_model.get_inputs()[0].name
-    upr_clo = upper_model.run(None, {upper_input_name: X_upper_norm})[0]  # shape (n,1)
-    lwr_clo = lower_model.run(None, {lower_input_name: X_lower_norm})[0]    # shape (n,1)
+    print("🔍 Checking lower model input shapes...")
+    try:
+        upper_input_name = upper_model.get_inputs()[0].name
+        lower_input_name = lower_model.get_inputs()[0].name
+        print(f"✅ Upper Model Input: {upper_input_name}, Shape: {upper_model.get_inputs()[0].shape}")
+        print(f"✅ Lower Model Input: {lower_input_name}, Shape: {lower_model.get_inputs()[0].shape}")
+    except Exception as e:
+        print(f"❌ Model input shape retrieval error: {e}")
+        return jsonify({"error": f"Model input shape retrieval failed: {e}"}), 500
 
-    # Combine the unsupervised outputs with the remaining features.
-    # Final classifier input order: upr_clo, lwr_clo, then [temp, sun, headwind, snow, rain, fatigued, hr]
+    try:
+        print("🚀 Running upper and lower models...")
+        upr_clo = upper_model.run(None, {upper_input_name: X_upper_norm})[0]
+        lwr_clo = lower_model.run(None, {lower_input_name: X_lower_norm})[0]
+    except Exception as e:
+        print(f"❌ Model execution error: {e}")
+        return jsonify({"error": f"Model execution failed: {e}"}), 500
+
+    print("🔍 Combining classifier inputs...")
     X_classifier = np.concatenate([upr_clo, lwr_clo, X_rest], axis=1)
 
-    # Run classifier model
-    classifier_input_name = feels_model.get_inputs()[0].name
-    outputs = feels_model.run(None, {classifier_input_name: X_classifier})
-    predictions = outputs[0]  # First output: class predictions
-    probabilities = outputs[1] if len(outputs) > 1 else None
+    print("🚀 Running classifier model...")
+    try:
+        classifier_input_name = feels_model.get_inputs()[0].name
+        outputs = feels_model.run(None, {classifier_input_name: X_classifier})
+        predictions = outputs[0]
+        probabilities = outputs[1] if len(outputs) > 1 else None
+    except Exception as e:
+        print(f"❌ Classifier model error: {e}")
+        return jsonify({"error": f"Classifier model failed: {e}"}), 500
 
-    # Convert numpy outputs to lists for JSON serialization.
     predictions = predictions.tolist() if isinstance(predictions, np.ndarray) else predictions
     probabilities = probabilities.tolist() if isinstance(probabilities, np.ndarray) else probabilities
     prediction_label = index_to_label(predictions[0], feels_metadata)
     accuracy = feels_metadata.get("accuracy", 0.0)
 
-    print("Prediction:", prediction_label, "\nProbabilities:", probabilities, "\nAccuracy:", accuracy)
+    print("✅ Prediction:", prediction_label, "\n📊 Probabilities:", probabilities, "\n🎯 Accuracy:", accuracy)
+    
     return jsonify({
         "prediction": prediction_label,
         "probabilities": probabilities,

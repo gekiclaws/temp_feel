@@ -12,6 +12,7 @@ import scipy.stats
 # Additional imports for conversion to ONNX
 import tf2onnx
 import onnx
+from onnx import version_converter
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 
@@ -101,11 +102,23 @@ print(f"✅ Saved encoder model to {encoder_onnx_path}")
 
 # Convert and save the PCA model for lower body to ONNX format
 initial_type = [('input', FloatTensorType([None, X_lower_scaled.shape[1]]))]
-pca_onnx_model = convert_sklearn(pca_lower, initial_types=initial_type)
-pca_onnx_path = os.path.join(models_dir, "pca_lower.onnx")
-with open(pca_onnx_path, "wb") as f:
+pca_onnx_model = convert_sklearn(pca_lower, initial_types=initial_type, target_opset=9)
+
+# Save the initial model to a temporary path or in-memory string
+temp_path = os.path.join(models_dir, "pca_lower_temp.onnx")
+with open(temp_path, "wb") as f:
     f.write(pca_onnx_model.SerializeToString())
-print(f"✅ Saved PCA model to {pca_onnx_path}")
+
+# Load the model from the temporary file
+onnx_model = onnx.load(temp_path)
+
+# Downgrade the model to IR version 9 using the version converter
+converted_model = version_converter.convert_version(onnx_model, 9)
+
+# Save the downgraded model to the final path
+pca_onnx_path = os.path.join(models_dir, "pca_lower.onnx")
+onnx.save(converted_model, pca_onnx_path)
+print(f"✅ Saved downgraded PCA model to {pca_onnx_path}")
 
 # ── Continue with feature extraction and validation ──
 
