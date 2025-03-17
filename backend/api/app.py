@@ -1,53 +1,82 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import onnxruntime as ort
-import numpy as np
 import os
 import json
+
+import onnxruntime as ort
+import numpy as np
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/')
-def home():
-    return 'Hello, World!'
-
-def get_model_paths(model_name):
-    """Get paths for a specific model folder"""
-    # Go up one directory from api/ to backend/
+def get_model_path(onnx_filename, model_name=None):
+    """
+    Constructs the full path to an ONNX file.
+    
+    If model_name is provided, the file is expected to reside in models/<model_name>/.
+    Otherwise, the file is assumed to be in the root of the models/ directory.
+    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    model_dir = os.path.join(base_dir, "models", model_name)
-    meta_path = os.path.join(model_dir, "model_meta.json")
-    model_path = os.path.join(model_dir, "model.onnx")
-    return model_dir, meta_path, model_path
+    if model_name:
+        model_dir = os.path.join(base_dir, "models", model_name)
+    else:
+        model_dir = os.path.join(base_dir, "models")
+    return os.path.join(model_dir, onnx_filename)
 
-def load_model(model_name):
-    """Load the ONNX model and metadata for given model name"""
+def load_onnx_model(onnx_filename, model_name=None):
+    """
+    Load an ONNX model.
+    
+    Parameters:
+      onnx_filename (str): The filename of the ONNX model.
+      model_name (str, optional): The subfolder name under models/ where the file is located.
+                                  If omitted, the file is loaded from the root of models/.
+    Returns:
+      An ONNX InferenceSession or None if loading fails.
+    """
+    model_path = get_model_path(onnx_filename, model_name)
     try:
-        model_dir, meta_path, model_path = get_model_paths(model_name)
         session = ort.InferenceSession(model_path, providers=['CPUExecutionProvider'])
+        return session
+    except Exception as e:
+        print(f"Error loading ONNX model from '{model_path}': {e}")
+        return None
+
+def load_classifier_model(model_name):
+    """
+    Load a classifier model along with its metadata.
+    
+    Assumes that the classifier ONNX file is named "model.onnx" and is stored in models/<model_name>/,
+    and that the metadata is stored in a file called "model_meta.json" in the same folder.
+    """
+    session = load_onnx_model("model.onnx", model_name=model_name)
+    if session is None:
+        return None, None
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    meta_path = os.path.join(base_dir, "models", model_name, "model_meta.json")
+    try:
         with open(meta_path, 'r') as f:
             metadata = json.load(f)
-        return session, metadata
     except Exception as e:
-        print(f"Error loading {model_name} model: {e}")
-        return None, None
+        print(f"Error loading metadata for model '{model_name}': {e}")
+        metadata = None
+    return session, metadata
 
 def load_scaler(scaler_filename):
-    """Load scaler parameters (mean and scale) from a .npz file"""
+    """Load scaler parameters (mean and scale) from a .npz file and cast to float32."""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     scaler_path = os.path.join(base_dir, "models", scaler_filename)
     scaler_data = np.load(scaler_path)
-    mean = scaler_data['mean']
-    scale = scaler_data['scale']
+    mean = scaler_data['mean'].astype(np.float32)
+    scale = scaler_data['scale'].astype(np.float32)
     return mean, scale
 
-# Load classifier model (for "feels") as before.
-feels_model, feels_metadata = load_model('feels')
+# Load classifier model "feels" from models/feels/
+feels_model, feels_metadata = load_classifier_model('feels')
 
-# Load the exported unsupervised clothing models
-upper_model, upper_metadata = load_model('clothing_encoder')
-lower_model, lower_metadata = load_model('clothing_pca')
+# Load preprocessing models stored in the root of models/ with specific filenames.
+upper_model = load_onnx_model("encoder_upper.onnx")
+lower_model = load_onnx_model("pca_lower.onnx")
 
 # Load scaler parameters for clothing normalization
 upper_mean, upper_scale = load_scaler("scaler_upper.npz")
@@ -60,6 +89,16 @@ def prepare_features(instances, feature_names):
         for j, feature in enumerate(feature_names):
             X[i, j] = float(instance.get(feature, 0))
     return X
+
+def index_to_label(index, metadata):
+    """Convert a class index to a label using the class mapping in the metadata"""
+    return metadata["class_mapping"].get(str(index), "Unknown")
+
+## API ##
+
+@app.route('/')
+def home():
+    return 'Hello, World!'
 
 @app.route("/predict/feels", methods=["POST"])
 def predict_feels():
@@ -75,7 +114,7 @@ def predict_feels():
     raw_feature_names = [
         "t_dress", "t_poly", "t_cot", "sleeves", "j_light", "j_fleece", "j_down",
         "shorts", "p_thin", "p_thick", "p_fleece", "p_down",
-        "temp", "sun", "headwind", "snow", "rain", "fatigued", "hr", "feels"
+        "temp", "sun", "headwind", "snow", "rain", "fatigued", "hr"
     ]
     X_raw = prepare_features(instances, raw_feature_names)
 
@@ -83,11 +122,11 @@ def predict_feels():
     # The remaining 8 features are for the classifier.
     upper_indices = list(range(0, 7))
     lower_indices = list(range(7, 12))
-    classifier_rest_indices = list(range(12, 20))
+    classifier_rest_indices = list(range(12, 19))
 
     X_upper_raw = X_raw[:, upper_indices]  # shape (n,7)
     X_lower_raw = X_raw[:, lower_indices]  # shape (n,5)
-    X_rest = X_raw[:, classifier_rest_indices]  # shape (n,8)
+    X_rest = X_raw[:, classifier_rest_indices]  # shape (n,7)
 
     # Normalize clothing features using saved scalers
     X_upper_norm = (X_upper_raw - upper_mean) / upper_scale
@@ -100,7 +139,7 @@ def predict_feels():
     lwr_clo = lower_model.run(None, {lower_input_name: X_lower_norm})[0]    # shape (n,1)
 
     # Combine the unsupervised outputs with the remaining features.
-    # Final classifier input order: upr_clo, lwr_clo, then [temp, sun, headwind, snow, rain, fatigued, hr, feels]
+    # Final classifier input order: upr_clo, lwr_clo, then [temp, sun, headwind, snow, rain, fatigued, hr]
     X_classifier = np.concatenate([upr_clo, lwr_clo, X_rest], axis=1)
 
     # Run classifier model
@@ -112,17 +151,14 @@ def predict_feels():
     # Convert numpy outputs to lists for JSON serialization.
     predictions = predictions.tolist() if isinstance(predictions, np.ndarray) else predictions
     probabilities = probabilities.tolist() if isinstance(probabilities, np.ndarray) else probabilities
+    prediction_label = index_to_label(predictions[0], feels_metadata)
+    accuracy = feels_metadata.get("accuracy", 0.0)
 
-    # Map numeric classes to labels using classifier metadata.
-    class_mapping = feels_metadata['class_mapping']
-    prediction_labels = [class_mapping[str(int(p))] for p in predictions]
-    prediction_label = prediction_labels[0]
-
-    print("Prediction:", prediction_label, "Probabilities:", probabilities)
+    print("Prediction:", prediction_label, "\nProbabilities:", probabilities, "\nAccuracy:", accuracy)
     return jsonify({
         "prediction": prediction_label,
         "probabilities": probabilities,
-        "model_accuracy": feels_metadata.get("accuracy", 0.0)
+        "accuracy": accuracy
     })
 
 if __name__ == "__main__":
