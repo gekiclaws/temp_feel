@@ -136,7 +136,7 @@ def write_csv(records, output_file):
     df = pd.DataFrame(records)
     return df
 
-def main():
+def extract_data():
     input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/raw_data.txt")
     output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/extracted_data.csv")
     
@@ -171,9 +171,14 @@ def main():
             print(f"{col}:\n{df[col].value_counts()}")
         
         print(f"\nProcessing complete. Data saved to '{output_file}'")
+
+        # After processing and saving the extracted data,
+        # clear the raw_data.txt file by opening it in write mode and writing an empty string.
+        with open(input_file, 'w') as f:
+            f.write('')
         
     except Exception as e:
         print(f"Error processing the file: {e}")
 
 if __name__ == "__main__":
-    main()
+    extract_data()
