@@ -1,6 +1,6 @@
-# Temp Feel API
+# TempFeel API
 
-A predictive system that correlates clothing choices with physiological data and weather conditions to optimize outdoor comfort.
+Existing metrics like wind chill and heat index try to improve on raw temperature readings but still fail to capture real comfort, overlooking factors like sun exposure, wind variation, and dynamic physiological states (e.g., metabolic rate). This API aims to bridge this gap by integrating clothing choices, broader environmental conditions, and physiological data for a more accurate, personalized comfort prediction.
 
 ## Prerequisites
 
