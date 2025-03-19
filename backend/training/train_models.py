@@ -151,5 +151,14 @@ def train_feels_model():
     return model, metadata
 
 if __name__ == "__main__":
+    # Import new data before training if available
+    input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/raw_data.txt")
+    # check if raw_data file is empty
+    if os.path.getsize(input_file) > 0:
+        import parse_raw_data, add_extracted_data, parse_cleaned_data
+        parse_raw_data.extract_and_clear_data()
+        add_extracted_data.append_and_clear_data()
+        parse_cleaned_data.main()
+
     # Train all models
     train_feels_model()

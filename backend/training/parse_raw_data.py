@@ -136,7 +136,7 @@ def write_csv(records, output_file):
     df = pd.DataFrame(records)
     return df
 
-def extract_data():
+def extract_and_clear_data():
     input_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/raw_data.txt")
     output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/extracted_data.csv")
     
@@ -181,4 +181,4 @@ def extract_data():
         print(f"Error processing the file: {e}")
 
 if __name__ == "__main__":
-    extract_data()
+    extract_and_clear_data()
