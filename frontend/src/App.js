@@ -106,8 +106,8 @@ const ComfortPredictionForm = () => {
           };
           const newFeels = feelsMapping[result.prediction.toLowerCase()] || predictedFeels;
           setPredictedFeels(newFeels);
-          if (result.model_accuracy !== undefined) {
-            setPredictionAccuracy(result.model_accuracy);
+          if (result.accuracy !== undefined) {
+            setPredictionAccuracy(result.accuracy);
           }
           // Trigger a brief update animation
           setFeelsUpdated(true);
