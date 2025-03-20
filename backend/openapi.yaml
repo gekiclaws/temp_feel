@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Temp Feel API
   description: API for predicting comfort feeling and recommending clothing based on input features
-  version: 2.0.0
+  version: 0.2.0
 
 servers:
   - url: http://localhost:8080
@@ -29,7 +29,7 @@ paths:
                     properties:
                       t_dress:
                         type: number
-                        description: Presence of dress tee
+                        description: Presence of dress tee (0 or 1)
                         example: 0
                       t_poly:
                         type: number
@@ -81,7 +81,7 @@ paths:
                         example: 25
                       sun:
                         type: number
-                        description: Sun intensity (0-1)
+                        description: Presence of sun (0 or 1)
                         example: 0
                       headwind:
                         type: number
@@ -89,15 +89,15 @@ paths:
                         example: 0
                       snow:
                         type: number
-                        description: Snow intensity (0-1)
+                        description: Snow intensity enum (0,1,2,3)
                         example: 0
                       rain:
                         type: number
-                        description: Rain intensity (0-1)
+                        description: Rain intensity enum (0,1,2,3)
                         example: 0
                       fatigued:
                         type: number
-                        description: Fatigue level (0-1)
+                        description: Presence of fatigue (0 or 1)
                         example: 0
                       hr:
                         type: number
